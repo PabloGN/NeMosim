@@ -272,8 +272,10 @@ Simulation::deliverSpikes()
 	for(int n=0; n < m_neuronCount; n++) {
 		m_currentE[n] = wfx_toFloat(mfx_currentE[n], fbits);
 		mfx_currentE[n] = 0U;
+#ifndef NEMO_SINGLE_CURRENT
 		m_currentI[n] = wfx_toFloat(mfx_currentI[n], fbits);
 		mfx_currentI[n] = 0U;
+#endif
 	}
 }
 
@@ -286,7 +288,11 @@ Simulation::deliverSpikesOne(nidx_t source, delay_t delay)
 
 	for(unsigned s=0; s < row.len; ++s) {
 		const FAxonTerminal& terminal = row[s];
+#ifdef NEMO_SINGLE_CURRENT
+		std::vector<wfix_t>& current = mfx_currentE;
+#else
 		std::vector<wfix_t>& current = terminal.weight >= 0 ? mfx_currentE : mfx_currentI;
+#endif
 		current.at(terminal.target) += terminal.weight;
 		LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
 				elapsedSimulation(),
