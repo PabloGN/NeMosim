@@ -118,9 +118,14 @@ gather( unsigned cycle,
 				weight = *((unsigned*)base + s_params.fcmPlaneSize);
 			}
 
+#ifdef NEMO_SINGLE_CURRENT
+			fix_t* s_current = s_currentE;
+			uint32_t* s_overflow = s_overflowE;
+#else
 			bool excitatory = weight >= 0;
 			fix_t* s_current = excitatory ? s_currentE : s_currentI;
 			uint32_t* s_overflow = excitatory ? s_overflowE : s_overflowI;
+#endif
 
 			if(weight != 0) {
 				bool overflow = fx_atomicAdd(s_current + postsynaptic, weight);
@@ -136,8 +141,12 @@ gather( unsigned cycle,
 		__syncthreads(); // to avoid overwriting s_groupSize
 	}
 
+#ifdef NEMO_SINGLE_CURRENT
+	fx_arrSaturatedToFloat(s_overflowE, s_currentE, sf_currentE, s_params.fixedPointScale);
+#else
 	fx_arrSaturatedToFloat(s_overflowE, false, s_currentE, sf_currentE, s_params.fixedPointScale);
 	fx_arrSaturatedToFloat(s_overflowI,  true, s_currentI, sf_currentI, s_params.fixedPointScale);
+#endif
 }
 
 

@@ -16,5 +16,10 @@ PLUGIN(Input)
 PLUGIN(PoissonSource)
 PLUGIN(Izhikevich)
 PLUGIN(IzhikevichRS)
-PLUGIN(IF_curr_exp)
 PLUGIN(Kuramoto)
+
+# Plugins which rely on separate excitatory and inhibitory currents are only
+# valid if we do indeed keep these separate.
+IF(NOT NEMO_SINGLE_CURRENT)
+	PLUGIN(IF_curr_exp)
+ENDIF(NOT NEMO_SINGLE_CURRENT)
