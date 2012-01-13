@@ -31,8 +31,7 @@ const char* SIMULATION_PROPAGATE_DOC =
 	"          or host pointer to compact list of fired neurons (on CPU)\n"
 	"nfired -- length of fired if on CPU\n"
 	"\n"
-	"Returns tuple of pointers to per-neuron accumulated weights, the first\n"
-	"one for excitatory, the second for inhbitiory weights.\n";
+	"Returns pointer to per-neuron accumulated weights\n";
 #endif
 
 
@@ -694,11 +693,10 @@ step_fi(nemo::Simulation& sim,
 #ifdef NEMO_BRIAN_ENABLED
 
 /*! \copydoc nemo::Simulation::propagate */
-tuple
+size_t
 propagate(nemo::Simulation& sim, size_t fired, int nfired)
 {
-	std::pair<size_t, size_t> ret = sim.propagate(fired, nfired);
-	return make_tuple(ret.first, ret.second);
+	return size_t(sim.propagate(reinterpret_cast<uint32_t*>(fired), nfired));
 }
 
 #endif

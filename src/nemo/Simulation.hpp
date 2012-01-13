@@ -11,7 +11,6 @@
  */
 
 #include <vector>
-#include <utility>
 #include <cstddef>
 #include <nemo/config.h>
 #include <nemo/types.h>
@@ -104,12 +103,11 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		 * 		number of neurons in that array. If \a fired points to CUDA device
 		 * 		memory this argument is ignored, as the length of \a fired is
 		 * 		the implicitly the length of the index space used by NeMo.
-		 * \return pointers to per-neuron accumulated weights, the first one
-		 * 		for excitatory, the second for inhbitiory weights. The pointer
-		 * 		is either to device or host memory, depending on the type of \a
-		 * 		fired.
+		 * \return pointer to per-neuron accumulated weights. The pointer is
+		 * 		either to device or host memory, depending on the type of
+		 * 		\a fired.
 		 */
-		std::pair<size_t, size_t> propagate(size_t fired, int nfired);
+		virtual float* propagate(uint32_t* fired, int nfired) = 0;
 #endif
 
 
@@ -210,10 +208,6 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		/* Disallow copying of Simulation object */
 		Simulation(const Simulation&);
 		Simulation& operator=(const Simulation&);
-
-#ifdef NEMO_BRIAN_ENABLED
-		virtual std::pair<float*, float*> propagate_raw(uint32_t* fired, int nfired) = 0;
-#endif
 
 };
 

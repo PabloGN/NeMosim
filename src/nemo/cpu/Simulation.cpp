@@ -104,8 +104,8 @@ Simulation::fire()
 
 
 #ifdef NEMO_BRIAN_ENABLED
-std::pair<float*, float*>
-Simulation::propagate_raw(uint32_t* fired, int nfired)
+float*
+Simulation::propagate(uint32_t* fired, int nfired)
 {
 	//! \todo assert that STDP is not enabled
 
@@ -123,7 +123,9 @@ Simulation::propagate_raw(uint32_t* fired, int nfired)
 	deliverSpikes();
 	m_timer.step();
 
-	return std::make_pair<float*, float*>(&m_currentE[0], &m_currentI[0]);
+	/* When Brian extensions are enabled all accumulation goes into a single
+	 * variable, m_currentE. */ 
+	return &m_currentE[0];
 }
 #endif
 

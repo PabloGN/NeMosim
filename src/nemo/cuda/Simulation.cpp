@@ -429,8 +429,9 @@ Simulation::postfire()
 
 
 #ifdef NEMO_BRIAN_ENABLED
-std::pair<float*, float*>
-Simulation::propagate_raw(uint32_t* d_fired, int nfired)
+
+float*
+Simulation::propagate(uint32_t* d_fired, int nfired)
 {
 	assert_or_throw(!m_stdp, "Brian-specific function propagate only well-defined when STDP is not enabled");
 	runKernel(::compact(m_streamCompute,
@@ -442,10 +443,15 @@ Simulation::propagate_raw(uint32_t* d_fired, int nfired)
 				m_fired.deviceData()));
 	postfire();
 	prefire();
-	float* acc = m_current.deviceData();
-	return std::make_pair<float*, float*>(acc, acc+m_current.size());
+
+	/* Note that m_current stores data for two separate accumulators
+	 * (excitatory and inhibitory). When Brian extensions are enabled all
+	 * accumulation is into the first of these, which is located at the
+	 * beginning of this data structure. */
+	return m_current.deviceData();
 	/* Brian does its own neuron update */
 }
+
 #endif
 
 
