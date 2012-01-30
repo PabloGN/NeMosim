@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <boost/format.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 
 #ifdef NEMO_CPU_OPENMP_ENABLED
 #include <omp.h>
@@ -46,6 +47,14 @@ Simulation::Simulation(
 	m_currentExt(m_neuronCount, 0.0f),
 	m_fstim(m_neuronCount, 0)
 {
+	using boost::format;
+
+	if(net.maxDelay() > 64) {
+		throw nemo::exception(NEMO_INVALID_INPUT,
+				str(format("The network has synapses with delay %ums. The CPU backend supports a maximum of 64 ms")
+						% net.maxDelay()));
+	}
+
 	/* Contigous local neuron indices */
 	nidx_t l_idx = 0;
 
@@ -270,8 +279,9 @@ Simulation::deliverSpikes()
 
 	/* convert current back to float */
 	unsigned fbits = getFractionalBits();
+	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
 #pragma omp parallel for default(shared)
-	for(int n=0; n < m_neuronCount; n++) {
+	for(int n=0; n < ncount; n++) {
 		m_currentE[n] = wfx_toFloat(mfx_currentE[n], fbits);
 		mfx_currentE[n] = 0U;
 #ifndef NEMO_SINGLE_CURRENT
