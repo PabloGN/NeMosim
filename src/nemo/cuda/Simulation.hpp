@@ -314,6 +314,7 @@ class Simulation : public nemo::SimulationBackend
 
 		FiringStimulus m_firingStimulus;
 
+		// const unsigned m_currentVars;     // number of output variables
 		NVector<float> m_currentStimulus; // user-provided
 		NVector<float> m_current;         // driven by simulation
 

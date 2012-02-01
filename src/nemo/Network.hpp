@@ -58,6 +58,17 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 */
 		unsigned addNeuronType(const std::string& name);
 
+		/*! \brief Register a new synapse type with the network.
+		 *
+		 * \return indx of the synape type, to be used when adding synapses
+		 *
+		 * All synapses have the same fundamental type (simple additive).
+		 *
+		 * This function must be called before synapses of the specified type
+		 * can be added to the network.
+		 */
+		unsigned addSynapseType(synapse_type t=NEMO_SYNAPSE_ADDITIVE);
+
 		/*! \brief Add a neuron to the network
 		 *
 		 * \param type

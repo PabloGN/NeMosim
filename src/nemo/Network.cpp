@@ -35,6 +35,14 @@ Network::addNeuronType(const std::string& name)
 }
 
 
+
+unsigned
+Network::addSynapseType(synapse_type t=NEMO_SYNAPSE_ADDITIVE);
+{
+	return m_impl->addSynapseType(name);
+}
+
+
 void
 Network::addNeuron(unsigned type, unsigned idx,
 		unsigned nargs, const float args[])

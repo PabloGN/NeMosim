@@ -39,6 +39,9 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! \copydoc nemo::Network::addNeuronType */
 		unsigned addNeuronType(const std::string& name);
 
+		/*! \copydoc nemo::Network::addSynapseType */
+		unsigned addSynapseType(const synapse_type&);
+
 		/*! \copydoc nemo::Network::addNeuron */
 		void addNeuron(unsigned type, unsigned idx, unsigned nargs, const float args[]);
 
@@ -134,6 +137,8 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		typedef std::map<nidx_t, Axon> fcm_t;
 
 		fcm_t m_fcm;
+
+		std::vector<synapse_type> m_synapses;
 
 		int m_minIdx;
 		int m_maxIdx;

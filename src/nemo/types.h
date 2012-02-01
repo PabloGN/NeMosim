@@ -70,4 +70,11 @@ typedef unsigned long long cycle_t;
 
 typedef uint64_t synapse_id;
 
+enum {
+	NEMO_SYNAPSE_ADDITIVE
+};
+
+
+typedef unsigned synapse_type;
+
 #endif

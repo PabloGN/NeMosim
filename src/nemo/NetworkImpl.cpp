@@ -49,6 +49,17 @@ NetworkImpl::addNeuronType(const std::string& name)
 
 
 
+unsigned
+NetworkImpl::addSynapseType(const synapse_type& type)
+{
+	if(type != NEMO_SYNAPSE_ADDITIVE) {
+		throw nemo::exception("This version of NeMo only supports simple additive synapses");
+	}
+	m_synapses.push_back(type);
+	return m_synapses.size() - 1;
+}
+
+
 const NeuronType&
 NetworkImpl::neuronType(unsigned id) const
 {
