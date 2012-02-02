@@ -76,8 +76,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 	}
 
 	construction::RCM<nidx_t, RSynapse, 32> m_racc(conf, net, RSynapse(~0U,0));
-	network::synapse_iterator i = net.synapse_begin();
-	network::synapse_iterator i_end = net.synapse_end();
+	network::synapse_iterator i = net.synapse_begin(0);
+	network::synapse_iterator i_end = net.synapse_end(0);
 
 	for( ; i != i_end; ++i) {
 		nidx_t source = mapper.localIdx(i->source);

@@ -53,7 +53,10 @@ unsigned
 NetworkImpl::addSynapseType(const synapse_type& type)
 {
 	if(type != NEMO_SYNAPSE_ADDITIVE) {
-		throw nemo::exception("This version of NeMo only supports simple additive synapses");
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo only supports simple additive synapses");
+	}
+	if(!m_synapses.empty()) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo only supports a single synapse type");
 	}
 	m_synapses.push_back(type);
 	return m_synapses.size() - 1;
@@ -318,9 +321,22 @@ NetworkImpl::neuron_end(unsigned id) const
 }
 
 
-synapse_iterator
-NetworkImpl::synapse_begin() const
+
+unsigned
+NetworkImpl::synapseTypeCount() const
 {
+	return m_synapses.size();
+}
+
+
+
+synapse_iterator
+NetworkImpl::synapse_begin(unsigned type) const
+{
+	if(type != 0) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "Multiple neuron types not supported");
+	}
+
 	fcm_t::const_iterator ni = m_fcm.begin();
 	fcm_t::const_iterator ni_end = m_fcm.end();
 
@@ -336,8 +352,12 @@ NetworkImpl::synapse_begin() const
 
 
 synapse_iterator
-NetworkImpl::synapse_end() const
+NetworkImpl::synapse_end(unsigned type) const
 {
+	if(type != 0) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "Multiple neuron types not supported");
+	}
+
 	fcm_t::const_iterator ni = m_fcm.end();
 	size_t gi = 0;
 

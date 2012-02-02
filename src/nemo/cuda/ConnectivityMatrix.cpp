@@ -67,8 +67,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 	 * needed, though, due the organisation in warp-sized chunks. */
 
 	size_t nextFreeWarp = 1; // leave space for null warp at beginning
-	for(network::synapse_iterator si = net.synapse_begin();
-			si != net.synapse_end(); ++si) {
+	for(network::synapse_iterator si = net.synapse_begin(0);
+			si != net.synapse_end(0); ++si) {
 		const Synapse& s = *si;
 		setMaxDelay(s);
 		DeviceIdx source = mapper.deviceIdx(s.source);
