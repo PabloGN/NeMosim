@@ -19,6 +19,7 @@ typedef unsigned nidx_t; // neuron index
 typedef unsigned sidx_t; // synapse index
 typedef unsigned delay_t;
 
+typedef uint8_t id8_t;
 typedef uint32_t id32_t;
 typedef uint64_t id64_t;
 

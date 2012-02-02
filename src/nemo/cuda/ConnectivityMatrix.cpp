@@ -278,7 +278,7 @@ ConnectivityMatrix::getSynapsesFrom(unsigned source)
 	m_queriedSynapseIds.resize(nSynapses);
 
 	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		m_queriedSynapseIds[iSynapse] = make_synapse_id(source, iSynapse);
+		m_queriedSynapseIds[iSynapse] = make_synapse_id0(source, iSynapse);
 	}
 
 	return m_queriedSynapseIds;

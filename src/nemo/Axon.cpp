@@ -7,8 +7,11 @@ namespace nemo {
 
 
 id32_t
-Axon::addSynapse(unsigned target,
-				unsigned delay, float weight, bool plastic)
+Axon::addSynapse(
+		unsigned target,
+		unsigned delay,
+		float weight,
+		bool plastic)
 {
 	id32_t id = id32_t(m_targets.size());
 	m_targets.push_back(target);
@@ -73,12 +76,10 @@ Axon::size() const
 
 
 void
-Axon::setSynapseIds(id32_t source, std::vector<synapse_id>& ids) const
+Axon::appendSynapseIds(id32_t source, id8_t type, std::vector<synapse_id>& ids) const
 {
-	size_t nSynapses = size();
-	ids.resize(nSynapses);
-	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		ids[iSynapse] = make_synapse_id(source, iSynapse);
+	for(size_t iSynapse = 0; iSynapse < size(); ++iSynapse) {
+		ids.push_back(make_synapse_id(source, type, iSynapse));
 	}
 }
 

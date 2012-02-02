@@ -56,6 +56,14 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 				float weight,
 				unsigned char plastic);
 
+		/*! \copydoc nemo::Network::addSynapse */
+		synapse_id addSynapse(
+				unsigned typeIdx,
+				unsigned source,
+				unsigned target,
+				unsigned delay,
+				float weight);
+
 		/*! \copydoc nemo::Network::getNeuronState */
 		float getNeuronState(unsigned neuron, unsigned var) const;
 
@@ -140,8 +148,8 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		 * unordered_map */
 		typedef std::map<nidx_t, Axon> fcm_t;
 
-		fcm_t m_fcm;
-
+		//! \todo merge these two types
+		std::vector<fcm_t> m_fcm;
 		std::vector<synapse_type> m_synapses;
 
 		int m_minIdx;
@@ -155,7 +163,7 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! Internal buffer for synapse queries */
 		std::vector<synapse_id> m_queriedSynapseIds;
 
-		const Axon& axon(nidx_t source) const;
+		const Axon& axon(nidx_t source, unsigned typeIdx) const;
 
 };
 

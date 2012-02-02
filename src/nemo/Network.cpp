@@ -18,7 +18,7 @@ Network::Network() :
 	m_impl(new network::NetworkImpl()),
 	iz_type(~0U)
 {
-	;
+	addSynapseType();
 }
 
 
@@ -125,6 +125,18 @@ Network::addSynapse(
 	return m_impl->addSynapse(source, target, delay, weight, plastic);
 }
 
+
+
+synapse_id
+Network::addSynapse(
+		unsigned typeIdx,
+		unsigned source,
+		unsigned target,
+		unsigned delay,
+		float weight)
+{
+	return m_impl->addSynapse(typeIdx, source, target, delay, weight);
+}
 
 
 unsigned

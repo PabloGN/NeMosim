@@ -343,7 +343,7 @@ testInvalidDynamicLength(bool stdp)
 	float param[7] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 	net.addNeuron(iz, 0, 7, param);
 	net.addNeuron(iz, 1, 7, param);
-	net.addSynapse(0, 1, 34, 1.0, stdp);
+	net.addSynapse(0U, 1U, 34U, 1.0f, stdp);
 
 	boost::scoped_ptr<nemo::Simulation> sim;
 

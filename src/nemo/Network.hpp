@@ -153,6 +153,16 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 				float weight,
 				unsigned char plastic);
 
+		/* Add a single synapse and return its unique id
+		 *
+		 * \param typeIdx synapse type index, as returned by addSynapseType
+		 */
+		synapse_id addSynapse(
+				unsigned typeIdx,
+				unsigned source,
+				unsigned target,
+				unsigned delay,
+				float weight);
 
 		/*! Get a single parameter for a single neuron
 		 *
