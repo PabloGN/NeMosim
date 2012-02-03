@@ -163,21 +163,32 @@ NetworkImpl::addSynapse(
 
 	if(delay < 1) {
 		throw nemo::exception(NEMO_INVALID_INPUT,
-				str(format("Invalid delay (%u) for synapse between %u and %u") % delay % source % target));
+				str(format("Invalid delay (%u) for synapse between neurons %u and %u")
+					% delay
+					% source
+					% target));
 	}
 
-	//! \todo catch errors here and report properly what's wrong
 	/* only non-plastic synapses supported via this API function */
-	id32_t id = m_fcm.at(typeIdx)[source].addSynapse(target, delay, weight, false);
+	try {
+		id32_t id = m_fcm.at(typeIdx)[source].addSynapse(target, delay, weight, false);
 
-	//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
-	m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));
-	m_minIdx = std::min(m_minIdx, int(std::min(source, target)));
-	m_maxDelay = std::max(m_maxDelay, delay);
-	m_maxWeight = std::max(m_maxWeight, weight);
-	m_minWeight = std::min(m_minWeight, weight);
+		//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
+		m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));
+		m_minIdx = std::min(m_minIdx, int(std::min(source, target)));
+		m_maxDelay = std::max(m_maxDelay, delay);
+		m_maxWeight = std::max(m_maxWeight, weight);
+		m_minWeight = std::min(m_minWeight, weight);
 
-	return make_synapse_id(source, typeIdx, id);
+		return make_synapse_id(source, typeIdx, id);
+	} catch(std::out_of_range& e) {
+		throw nemo::exception(NEMO_INVALID_INPUT,
+				str(format("Invalid synapse type index (%u) for synapse between neurons %u and %u")
+					% typeIdx
+					% source
+					% target));
+	}
+
 }
 
 

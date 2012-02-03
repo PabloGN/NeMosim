@@ -121,6 +121,10 @@ Simulation::Simulation(
 {
 	using boost::format;
 
+	if(net.synapseTypeCount() != 1) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "Exactly one synapse type expected");
+	}
+
 	size_t pitch1 = m_firingBuffer.wordPitch();
 	size_t pitch32 = m_current.wordPitch();
 

@@ -72,6 +72,10 @@ Simulation::Simulation(
 		m_neurons.push_back(ns);
 	}
 
+	if(net.synapseTypeCount() != 1) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "Exactly one synapse type expected");
+	}
+
 	m_cm.reset(new nemo::ConnectivityMatrix(net, conf, m_mapper));
 
 	for(size_t source=0; source < m_neuronCount; ++source) {
