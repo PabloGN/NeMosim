@@ -17,7 +17,9 @@
 
 namespace nemo {
 
-	class OutgoingDelays;
+	namespace runtime {
+		class Delays;
+	}
 
 	namespace construction {
 
@@ -41,7 +43,7 @@ class Delays
 
 	private :
 
-		friend class nemo::OutgoingDelays;
+		friend class nemo::runtime::Delays;
 
 		std::map<nidx_t, std::set<delay_t> > m_delays;
 

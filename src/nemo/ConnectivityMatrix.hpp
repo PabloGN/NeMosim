@@ -22,11 +22,11 @@
 #include <nemo/config.h>
 #include <nemo/construction/RCM.hpp>
 #include <nemo/runtime/RCM.hpp>
+#include <nemo/runtime/Delays.hpp>
 
 #include "types.hpp"
 #include "RandomMapper.hpp"
 #include "StdpProcess.hpp"
-#include "OutgoingDelays.hpp"
 
 #define ASSUMED_CACHE_LINE_SIZE 64
 
@@ -129,7 +129,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/*! \copydoc nemo::Simulation::getPlastic */
 		unsigned char getPlastic(const synapse_id& synapse) const;
 
-		typedef OutgoingDelays::const_iterator delay_iterator;
+		typedef runtime::Delays::const_iterator delay_iterator;
 
 		/*! \param source
 		 * 		global neuron index of source neuron
@@ -187,7 +187,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		boost::optional<StdpProcess> m_stdp;
 
-		boost::scoped_ptr<OutgoingDelays> m_delays;
+		boost::scoped_ptr<runtime::Delays> m_delays;
 		delay_t m_maxDelay;
 
 		/*! \return linear index into CM, based on 2D index (neuron,delay) */

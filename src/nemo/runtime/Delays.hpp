@@ -1,5 +1,5 @@
-#ifndef NEMO_OUTGOING_DELAYS_HPP
-#define NEMO_OUTGOING_DELAYS_HPP
+#ifndef NEMO_RUNTIME_DELAYS_HPP
+#define NEMO_RUNTIME_DELAYS_HPP
 
 /* Copyright 2010 Imperial College London
  *
@@ -21,9 +21,11 @@ namespace nemo {
 		class Delays;
 	}
 
+	namespace runtime {
+
 
 /*! Per-neuron collection of outgoing delays (run-time) */
-class OutgoingDelays
+class Delays
 {
 	public :
 
@@ -31,7 +33,7 @@ class OutgoingDelays
 		 * \param maxIdx
 		 * 		max source neuron index which will be used for run-time queries
 		 */
-		OutgoingDelays(const construction::Delays&);
+		Delays(const construction::Delays&);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
@@ -65,12 +67,12 @@ class OutgoingDelays
 
 		delay_t m_maxDelay;
 
-		OutgoingDelays(const OutgoingDelays& );
-		OutgoingDelays& operator=(const OutgoingDelays&);
+		Delays(const Delays& );
+		Delays& operator=(const Delays&);
 
 		bool hasSynapses(nidx_t source) const;
 };
 
-}
+}	}
 
 #endif

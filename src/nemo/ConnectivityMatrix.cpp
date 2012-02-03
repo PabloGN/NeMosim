@@ -135,7 +135,7 @@ ConnectivityMatrix::finalizeForward(
 		bool verifySources)
 {
 	m_maxDelay = delays.maxDelay();
-	m_delays.reset(new OutgoingDelays(delays));
+	m_delays.reset(new runtime::Delays(delays));
 
 	if(m_acc.empty()) {
 		return;

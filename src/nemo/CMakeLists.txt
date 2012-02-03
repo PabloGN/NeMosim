@@ -51,10 +51,10 @@ ADD_LIBRARY(nemo_base
 	NeuronType.cpp
 	Simulation.cpp
 	SimulationBackend.cpp
-	OutgoingDelays.cpp
 	Plugin.cpp
 	ReadableNetwork.cpp
 	RNG.cpp
+	runtime/Delays.cpp
 	runtime/RCM.cpp
 	StdpFunction.cpp
 	StdpProcess.cpp

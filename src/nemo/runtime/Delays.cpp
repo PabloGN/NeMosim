@@ -8,15 +8,16 @@
  */
 
 #include <nemo/construction/Delays.hpp>
+#include <nemo/exception.hpp>
+#include <nemo/types.hpp>
 
-#include "OutgoingDelays.hpp"
-#include "types.hpp"
-#include "exception.hpp"
+#include "Delays.hpp"
 
 namespace nemo {
+	namespace runtime {
 
 
-OutgoingDelays::OutgoingDelays(const construction::Delays& acc) :
+Delays::Delays(const construction::Delays& acc) :
 	m_maxDelay(0)
 {
 	m_maxDelay = acc.maxDelay();
@@ -31,8 +32,8 @@ OutgoingDelays::OutgoingDelays(const construction::Delays& acc) :
 
 
 
-OutgoingDelays::const_iterator
-OutgoingDelays::begin(nidx_t source) const
+Delays::const_iterator
+Delays::begin(nidx_t source) const
 {
 	boost::unordered_map<nidx_t, std::vector<delay_t> >::const_iterator found = m_data.find(source);
 	if(found == m_data.end()) {
@@ -43,8 +44,8 @@ OutgoingDelays::begin(nidx_t source) const
 
 
 
-OutgoingDelays::const_iterator
-OutgoingDelays::end(nidx_t source) const
+Delays::const_iterator
+Delays::end(nidx_t source) const
 {
 	boost::unordered_map<nidx_t, std::vector<delay_t> >::const_iterator found = m_data.find(source);
 	if(found == m_data.end()) {
@@ -55,14 +56,14 @@ OutgoingDelays::end(nidx_t source) const
 
 
 bool
-OutgoingDelays::hasSynapses(nidx_t source) const
+Delays::hasSynapses(nidx_t source) const
 {
 	return m_data.find(source) != m_data.end();
 }
 
 
 uint64_t
-OutgoingDelays::delayBits(nidx_t source) const
+Delays::delayBits(nidx_t source) const
 {
 	uint64_t bits = 0;
 	if(hasSynapses(source)) {
@@ -73,4 +74,4 @@ OutgoingDelays::delayBits(nidx_t source) const
 	return bits;
 }
 
-}
+}	}
