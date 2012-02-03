@@ -29,11 +29,12 @@ class Delays
 {
 	public :
 
-		/*
-		 * \param maxIdx
-		 * 		max source neuron index which will be used for run-time queries
+		/*! Create a run-time represenation of the outgoing delays
+		 *
+		 * \param neuronCount
+		 * 		number of neurons in the network
 		 */
-		Delays(const construction::Delays&);
+		Delays(size_t neuronCount, const construction::Delays&);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
@@ -53,10 +54,8 @@ class Delays
 		 */
 		const_iterator end(nidx_t neuron) const;
 
-		/*! \return a bitwise representation of the delays for a single source.
-		 * The least significant bit corresponds to a delay of 1 */
-		uint64_t delayBits(nidx_t source) const;
-		
+		const std::vector<uint64_t>& delayBits() const { return m_bits; }
+
 	private :
 
 		/*! \note Did some experimentation with replacing std::vector with raw
@@ -65,12 +64,21 @@ class Delays
 		 * table */
 		boost::unordered_map<nidx_t, std::vector<delay_t> > m_data;
 
+		/* Delays stored in compact form, supporting up to 64 delays. One bit
+		 * per delay with LSb the lowest delay. */
+		std::vector<uint64_t> m_bits;
+
 		delay_t m_maxDelay;
 
 		Delays(const Delays& );
 		Delays& operator=(const Delays&);
 
 		bool hasSynapses(nidx_t source) const;
+
+		/*! \return a bitwise representation of the delays for a single source.
+		 * The least significant bit corresponds to a delay of 1 */
+		uint64_t delayBits(nidx_t source) const;
+
 };
 
 }	}

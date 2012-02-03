@@ -17,16 +17,16 @@ namespace nemo {
 	namespace runtime {
 
 
-Delays::Delays(const construction::Delays& acc) :
-	m_maxDelay(0)
+Delays::Delays(size_t neuronCount, const construction::Delays& acc) :
+	m_bits(neuronCount, 0U),
+	m_maxDelay(acc.maxDelay())
 {
-	m_maxDelay = acc.maxDelay();
-
 	typedef std::map<unsigned, std::set<unsigned> >::const_iterator it;
 	for(it i = acc.m_delays.begin(), i_end = acc.m_delays.end(); i != i_end; ++i) {
 		const std::set<unsigned>& delays = i->second;
 		unsigned neuron = i->first;
 		m_data[neuron] = std::vector<delay_t>(delays.begin(), delays.end());
+		m_bits.at(neuron) = delayBits(neuron);
 	}
 }
 

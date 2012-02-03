@@ -39,7 +39,6 @@ Simulation::Simulation(
 	m_neuronCount(net.neuronCount()),
 	m_fired(m_neuronCount, 0),
 	m_recentFiring(m_neuronCount, 0),
-	m_delays(m_neuronCount, 0),
 	mfx_currentE(m_neuronCount, 0U),
 	m_currentE(m_neuronCount, 0.0f),
 	mfx_currentI(m_neuronCount, 0U),
@@ -77,10 +76,6 @@ Simulation::Simulation(
 	}
 
 	m_cm.reset(new nemo::ConnectivityMatrix(net, conf, m_mapper));
-
-	for(size_t source=0; source < m_neuronCount; ++source) {
-		m_delays[source] = m_cm->delayBits(source);
-	}
 
 	resetTimer();
 }
@@ -268,9 +263,11 @@ Simulation::deliverSpikes()
 	 * may be needed for STDP */
 	uint64_t validSpikes = ~(((uint64_t) (~0)) << m_cm->maxDelay());
 
+	const std::vector<uint64_t> delays = m_cm->delayBits();
+
 	for(size_t source=0; source < m_neuronCount; ++source) {
 
-		uint64_t f = m_recentFiring[source] & validSpikes & m_delays[source];
+		uint64_t f = m_recentFiring[source] & validSpikes & delays[source];
 
 		int delay = 0;
 		while(f) {

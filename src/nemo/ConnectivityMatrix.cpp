@@ -164,7 +164,7 @@ ConnectivityMatrix::finalizeForward(
 		}
 	}
 
-	m_delays.reset(new runtime::Delays(delays));
+	m_delays.reset(new runtime::Delays(mapper.maxLocalIdx()+1, delays));
 }
 
 
@@ -419,6 +419,13 @@ ConnectivityMatrix::delay_iterator
 ConnectivityMatrix::delay_end(nidx_t source) const
 {
 	return m_delays->end(source);
+}
+
+
+
+const std::vector<uint64_t>&
+ConnectivityMatrix::delayBits() const {
+	return m_delays->delayBits();
 }
 
 

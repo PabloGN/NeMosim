@@ -152,12 +152,12 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		void applyStdp(float reward);
 
-		/*! \return bit-mask indicating the delays at which the given neuron
-		 * has *any* outgoing synapses. If the source neuron is invalid 0 is
-		 * returned.
+		/*! \return vector of bit-masks indicating the delays at which the
+		 * given neuron has *any* outgoing synapses.
 		 *
-		 * Only call this after finalize has been called. */
-		uint64_t delayBits(nidx_t l_source) const { return m_delays->delayBits(l_source); }
+		 * Only call this after finalize has been called.
+		 */
+		const std::vector<uint64_t>& delayBits() const;
 
 		/*! \return pointer to reverse connectivity matrix */
 		const runtime::RCM* rcm() const { return &m_rcm; }
