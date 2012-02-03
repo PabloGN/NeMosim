@@ -39,8 +39,6 @@ class Delays
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
-		void clear() { m_delays.clear() ; }
-
 	private :
 
 		friend class nemo::OutgoingDelays;
