@@ -144,8 +144,6 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 */
 		delay_iterator delay_end(nidx_t source) const;
 
-		unsigned fractionalBits() const { return m_fractionalBits; }
-
 		delay_t maxDelay() const { return m_maxDelay; }
 
 		void accumulateStdp(const std::vector<uint64_t>& recentFiring);

@@ -129,6 +129,8 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		//! \todo can we get rid of this?
 		size_t m_neuronCount;
 
+		unsigned m_fractionalBits;
+
 		/* last cycles firing, one entry per neuron */
 		std::vector<unsigned> m_fired;
 

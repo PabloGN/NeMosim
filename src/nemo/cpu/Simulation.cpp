@@ -37,6 +37,7 @@ Simulation::Simulation(
 		const nemo::network::Generator& net,
 		const nemo::ConfigurationImpl& conf) :
 	m_neuronCount(net.neuronCount()),
+	m_fractionalBits(conf.fractionalBits()),
 	m_fired(m_neuronCount, 0),
 	m_recentFiring(m_neuronCount, 0),
 	mfx_currentE(m_neuronCount, 0U),
@@ -85,7 +86,7 @@ Simulation::Simulation(
 unsigned
 Simulation::getFractionalBits() const
 {
-	return m_cm->fractionalBits();
+	return m_fractionalBits;
 }
 
 
