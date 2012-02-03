@@ -10,13 +10,14 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <vector>
 #include <map>
 #include <set>
+#include <vector>
 
-#include <boost/tuple/tuple.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/optional.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <nemo/config.h>
 #include <nemo/construction/RCM.hpp>
@@ -152,7 +153,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 * returned.
 		 *
 		 * Only call this after finalize has been called. */
-		uint64_t delayBits(nidx_t l_source) const { return m_delays.delayBits(l_source); }
+		uint64_t delayBits(nidx_t l_source) const { return m_delays->delayBits(l_source); }
 
 		/*! \return pointer to reverse connectivity matrix */
 		const runtime::RCM* rcm() const { return &m_rcm; }
@@ -179,8 +180,9 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		boost::optional<StdpProcess> m_stdp;
 
+		//! \todo make this a temporary
 		OutgoingDelaysAcc m_delaysAcc;
-		OutgoingDelays m_delays;
+		boost::scoped_ptr<OutgoingDelays> m_delays;
 		delay_t m_maxDelay;
 
 		/*! \return linear index into CM, based on 2D index (neuron,delay) */

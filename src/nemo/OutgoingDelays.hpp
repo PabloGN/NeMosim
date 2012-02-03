@@ -54,15 +54,11 @@ class OutgoingDelays
 {
 	public :
 
-		OutgoingDelays();
-
 		/*
 		 * \param maxIdx
 		 * 		max source neuron index which will be used for run-time queries
 		 */
 		OutgoingDelays(const OutgoingDelaysAcc&);
-
-		void init(const OutgoingDelaysAcc&);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 

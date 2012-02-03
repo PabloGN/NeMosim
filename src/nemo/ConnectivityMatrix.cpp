@@ -125,7 +125,7 @@ void
 ConnectivityMatrix::finalizeForward(const mapper_t& mapper, bool verifySources)
 {
 	m_maxDelay = m_delaysAcc.maxDelay();
-	m_delays.init(m_delaysAcc);
+	m_delays.reset(new OutgoingDelays(m_delaysAcc));
 	m_delaysAcc.clear();
 
 	if(m_acc.empty()) {
@@ -404,7 +404,7 @@ ConnectivityMatrix::getPlastic(const synapse_id& id) const
 ConnectivityMatrix::delay_iterator
 ConnectivityMatrix::delay_begin(nidx_t source) const
 {
-	return m_delays.begin(source);
+	return m_delays->begin(source);
 }
 
 
@@ -412,7 +412,7 @@ ConnectivityMatrix::delay_begin(nidx_t source) const
 ConnectivityMatrix::delay_iterator
 ConnectivityMatrix::delay_end(nidx_t source) const
 {
-	return m_delays.end(source);
+	return m_delays->end(source);
 }
 
 

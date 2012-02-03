@@ -8,22 +8,9 @@
 namespace nemo {
 
 
-OutgoingDelays::OutgoingDelays() :
-	m_maxDelay(0)
-{
-	;
-}
-
 
 OutgoingDelays::OutgoingDelays(const OutgoingDelaysAcc& acc) :
 	m_maxDelay(0)
-{
-	init(acc);
-}
-
-
-void
-OutgoingDelays::init(const OutgoingDelaysAcc& acc)
 {
 	m_maxDelay = acc.maxDelay();
 
