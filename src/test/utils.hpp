@@ -59,7 +59,7 @@ createRing(unsigned ncount, unsigned n0=0, bool plastic=false, unsigned nstep=1,
 
 /*! Add a ring to an existing network */
 void
-createRing(nemo::Network*, unsigned ncount, unsigned n0=0, bool plastic=false, unsigned nstep=1, unsigned delay=1);
+createRing(nemo::Network*, unsigned synapseType, unsigned ncount, unsigned n0=0, unsigned nstep=1, unsigned delay=1);
 
 
 #endif

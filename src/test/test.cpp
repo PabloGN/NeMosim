@@ -337,9 +337,10 @@ runDoubleRing(backend_t backend)
 	setBackend(backend, conf);
 
 	boost::scoped_ptr<nemo::Network> net(new nemo::Network);
+	unsigned synapse = net->addSynapseType();
 
-	createRing(net.get(), ncount, 0, false, 1, 1);
-	createRing(net.get(), ncount, ncount, false, 1, 2);
+	createRing(net.get(), synapse, ncount, 0, 1, 1);
+	createRing(net.get(), synapse, ncount, ncount, 1, 2);
 
 	boost::scoped_ptr<nemo::Simulation> sim(nemo::simulation(*net, conf));
 
@@ -378,8 +379,9 @@ testNeuronTypeMixture(backend_t backend, unsigned szOthers, bool izFirst)
 {
 	const unsigned szRing = 1024;
 	boost::scoped_ptr<nemo::Network> net(new nemo::Network());
+	unsigned synapseType = net->addSynapseType();
 	if(izFirst) {
-		createRing(net.get(), szRing);
+		createRing(net.get(), synapseType, szRing);
 	}
 	unsigned poisson = net->addNeuronType("PoissonSource");
 	float p = 0.001f;
@@ -387,7 +389,7 @@ testNeuronTypeMixture(backend_t backend, unsigned szOthers, bool izFirst)
 		net->addNeuron(poisson, n, 1, &p);
 	}
 	if(!izFirst) {
-		createRing(net.get(), szRing);
+		createRing(net.get(), synapseType, szRing);
 	}
 
 	nemo::Configuration conf = configuration(false, 1024, backend);
