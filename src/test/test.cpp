@@ -327,7 +327,7 @@ runRing(backend_t backend, unsigned ncount, unsigned delay)
 
 /* Run two small non-overlapping rings with different delays */
 void
-runDoubleRing(backend_t backend)
+runDoubleRing(backend_t backend, bool separateSynapseTypes)
 {
 	/* Make sure we go around the ring at least a couple of times */
 	const unsigned ncount = 512;
@@ -337,10 +337,12 @@ runDoubleRing(backend_t backend)
 	setBackend(backend, conf);
 
 	boost::scoped_ptr<nemo::Network> net(new nemo::Network);
-	unsigned synapse = net->addSynapseType();
+	unsigned synapse0 = net->addSynapseType();
+	unsigned synapse1 =
+		separateSynapseTypes ? net->addSynapseType() : synapse0;
 
-	createRing(net.get(), synapse, ncount, 0, 1, 1);
-	createRing(net.get(), synapse, ncount, ncount, 1, 2);
+	createRing(net.get(), synapse0, ncount, 0, 1, 1);
+	createRing(net.get(), synapse1, ncount, ncount, 1, 2);
 
 	boost::scoped_ptr<nemo::Simulation> sim(nemo::simulation(*net, conf));
 
@@ -483,7 +485,7 @@ BOOST_AUTO_TEST_SUITE(ring_tests)
 	TEST_ALL_BACKENDS_N(n4000, runRing, 4000, 1); // ditto
 	TEST_ALL_BACKENDS_N(n2000d20, runRing, 2000, 20); // ditto
 	TEST_ALL_BACKENDS_N(n2000d80, runRing, 2000, 80); // ditto
-	TEST_ALL_BACKENDS(delays, runDoubleRing);
+	TEST_ALL_BACKENDS_N(delays, runDoubleRing, false);
 BOOST_AUTO_TEST_SUITE_END()
 
 
@@ -1037,7 +1039,7 @@ BOOST_AUTO_TEST_SUITE(c_api)
 BOOST_AUTO_TEST_SUITE_END()
 
 
-BOOST_AUTO_TEST_SUITE(mix)
+BOOST_AUTO_TEST_SUITE(neuron_types)
 	TEST_ALL_BACKENDS_N(IP, testNeuronTypeMixture, 1024, true)
 	TEST_ALL_BACKENDS_N(PI, testNeuronTypeMixture, 1024, false)
 	/* Verify that it's possible to add a neuron type and then simply ignore
@@ -1052,6 +1054,13 @@ BOOST_AUTO_TEST_SUITE(fixedpoint)
 	TEST_ALL_BACKENDS(saturation, testFixedPointSaturation)
 #endif
 BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_SUITE(synapse_types)
+	TEST_ALL_BACKENDS_N(double_ring, runDoubleRing, true);
+BOOST_AUTO_TEST_SUITE_END()
+
+
 
 /* Neuron-type specific tests */
 
