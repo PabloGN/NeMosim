@@ -76,8 +76,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 		m_stdp = StdpProcess(conf.stdpFunction().get(), m_fractionalBits);
 	}
 
-	//! \todo rename
-	construction::RCM<nidx_t, RSynapse, 32> m_racc(conf, net, RSynapse(~0U,0));
+	construction::RCM<nidx_t, RSynapse, 32> racc(conf, net, RSynapse(~0U,0));
 	construction::Delays delays;
 
 	network::synapse_iterator i = net.synapse_begin(0);
@@ -87,13 +86,13 @@ ConnectivityMatrix::ConnectivityMatrix(
 		nidx_t source = mapper.localIdx(i->source);
 		nidx_t target = mapper.localIdx(i->target());
 		sidx_t sidx = addSynapse(source, target, *i, delays);
-		m_racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
+		racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
 	}
 
 	//! \todo avoid two passes here
 	bool verifySources = true;
 	finalizeForward(mapper, delays, verifySources);
-	m_rcm = runtime::RCM(m_racc);
+	m_rcm = runtime::RCM(racc);
 }
 
 
