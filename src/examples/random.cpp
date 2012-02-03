@@ -63,6 +63,10 @@ addInhibitoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
 nemo::Network*
 construct(unsigned ncount, unsigned scount, unsigned dmax, bool stdp)
 {
+	if(stdp) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo does not fully support STDP");
+	}
+
 	rng_t rng;
 	/* Neuron parameters and weights are partially randomised */
 	urng_t randomParameter(rng, boost::uniform_real<double>(0, 1));
@@ -71,16 +75,19 @@ construct(unsigned ncount, unsigned scount, unsigned dmax, bool stdp)
 
 	nemo::Network* net = new nemo::Network();
 
+	/* Excitatory and inhibitory synapses behave the same way */
+	unsigned synapse = net->addSynapseType();
+
 	for(unsigned nidx=0; nidx < ncount; ++nidx) {
 		if(nidx < (ncount * 4) / 5) { // excitatory
 			addExcitatoryNeuron(net, nidx, randomParameter);
 			for(unsigned s = 0; s < scount; ++s) {
-				net->addSynapse(nidx, randomTarget(), randomDelay(), 0.5f * float(randomParameter()), stdp);
+				net->addSynapse(synapse, nidx, randomTarget(), randomDelay(), 0.5f * float(randomParameter()));
 			}
 		} else { // inhibitory
 			addInhibitoryNeuron(net, nidx, randomParameter);
 			for(unsigned s = 0; s < scount; ++s) {
-				net->addSynapse(nidx, randomTarget(), 1U, float(-randomParameter()), 0);
+				net->addSynapse(synapse, nidx, randomTarget(), 1U, float(-randomParameter()));
 			}
 		}
 	}

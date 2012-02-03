@@ -174,9 +174,9 @@ delay(unsigned distance)
 void
 addExcitatorySynapses(
 		nemo::Network* net,
+		unsigned type,
 		unsigned patch, unsigned x, unsigned y,
 		unsigned pcount, unsigned m,
-		bool stdp,
 		grng_t& distance,
 		urng_t& angle,
 		urng_t& rweight)
@@ -186,7 +186,7 @@ addExcitatorySynapses(
 		//! \todo add dependence of delay on distance
 		target_t target = targetNeuron(patch, x, y, pcount, distance, angle);
 		float weight = 0.5f * float(rweight());
-		net->addSynapse(source, target.first, delay(unsigned(target.second)), weight, stdp);
+		net->addSynapse(type, source, target.first, delay(unsigned(target.second)), weight);
 	}
 }
 
@@ -194,9 +194,9 @@ addExcitatorySynapses(
 void
 addInhibitorySynapses(
 		nemo::Network* net,
+		unsigned type,
 		unsigned patch, unsigned x, unsigned y,
 		unsigned pcount, unsigned m,
-		bool stdp,
 		grng_t& distance,
 		urng_t& angle,
 		urng_t& rweight)
@@ -206,7 +206,7 @@ addInhibitorySynapses(
 		//! \todo add dependence of delay on distance
 		target_t target = targetNeuron(patch, x, y, pcount, distance, angle);
 		float weight = float(-rweight());
-		net->addSynapse(source, target.first, delay(unsigned(target.second)), weight, stdp);
+		net->addSynapse(type, source, target.first, delay(unsigned(target.second)), weight);
 	}
 }
 
@@ -216,6 +216,9 @@ nemo::Network*
 construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=true)
 {
 	nemo::Network* net = new nemo::Network();
+
+	/* Excitatory and inhibitory synapses behave the same way */
+	unsigned synapse = net->addSynapseType();
 
 	/* The network is a torus which consists of pcount rectangular patches,
 	 * each with dimensions height * width. The size of each patch is the same
@@ -251,6 +254,10 @@ construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=tru
 	unsigned exCount = 0;
 	unsigned inCount = 0;
 
+	if(stdp) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo does not fully support STDP");
+	}
+
 	for(unsigned p = 0; p < pcount; ++p) {
 		if(logging) {
 			std::cout << "Partition " << p << std::endl;
@@ -260,12 +267,12 @@ construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=tru
 				unsigned nidx = neuronIndex(p, x, y);
 				if(isExcitatory()) {
 					addExcitatoryNeuron(net, nidx, randomParameter);
-					addExcitatorySynapses(net, p, x, y, pcount, m, stdp,
+					addExcitatorySynapses(net, synapse, p, x, y, pcount, m,
 							distanceEx, angle, randomParameter);
 					exCount++;
 				} else {
 					addInhibitoryNeuron(net, nidx, randomParameter);
-					addInhibitorySynapses(net, p, x, y, pcount, m, false,
+					addInhibitorySynapses(net, synapse, p, x, y, pcount, m,
 							distanceIn, angle, randomParameter);
 					inCount++;
 				}

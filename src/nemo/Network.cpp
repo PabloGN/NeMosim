@@ -18,7 +18,7 @@ Network::Network() :
 	m_impl(new network::NetworkImpl()),
 	iz_type(~0U)
 {
-	addSynapseType();
+	;
 }
 
 
