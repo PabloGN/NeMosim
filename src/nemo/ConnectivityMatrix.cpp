@@ -77,7 +77,6 @@ ConnectivityMatrix::ConnectivityMatrix(
 	}
 
 	construction::RCM<nidx_t, RSynapse, 32> racc(conf, net, RSynapse(~0U,0));
-	construction::Delays delays;
 
 	network::synapse_iterator i = net.synapse_begin(0);
 	network::synapse_iterator i_end = net.synapse_end(0);
@@ -85,13 +84,13 @@ ConnectivityMatrix::ConnectivityMatrix(
 	for( ; i != i_end; ++i) {
 		nidx_t source = mapper.localIdx(i->source);
 		nidx_t target = mapper.localIdx(i->target());
-		sidx_t sidx = addSynapse(source, target, *i, delays);
+		sidx_t sidx = addSynapse(source, target, *i);
 		racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
 	}
 
 	//! \todo avoid two passes here
 	bool verifySources = true;
-	finalizeForward(mapper, delays, verifySources);
+	finalizeForward(mapper, verifySources);
 	m_rcm = runtime::RCM(racc);
 }
 
@@ -101,19 +100,16 @@ sidx_t
 ConnectivityMatrix::addSynapse(
 		nidx_t source,
 		nidx_t target,
-		const Synapse& s,
-		construction::Delays& delays)
+		const Synapse& s)
 {
 	delay_t delay = s.delay;
+	m_maxDelay = std::max(m_maxDelay, delay);
 	fix_t weight = fx_toFix(s.weight(), m_fractionalBits);
 
 	fidx_t fidx(source, delay);
 	row_t& row = m_acc[fidx];
 	sidx_t sidx = row.size();
 	row.push_back(FAxonTerminal(target, weight));
-
-	//! \todo could do this on finalize pass, since there are fewer steps there
-	delays.addDelay(source, delay);
 
 	if(!m_writeOnlySynapses) {
 		/* The auxillary synapse maps always uses the global (user-specified)
@@ -131,11 +127,9 @@ ConnectivityMatrix::addSynapse(
 void
 ConnectivityMatrix::finalizeForward(
 		const mapper_t& mapper,
-		const construction::Delays& delays,
 		bool verifySources)
 {
-	m_maxDelay = delays.maxDelay();
-	m_delays.reset(new runtime::Delays(delays));
+	construction::Delays delays;
 
 	if(m_acc.empty()) {
 		return;
@@ -159,6 +153,7 @@ ConnectivityMatrix::finalizeForward(
 
 			std::map<fidx_t, row_t>::const_iterator row = m_acc.find(fidx_t(n, d));
 			if(row != m_acc.end()) {
+				delays.addDelay(n, d);
 				verifySynapseTerminals(row->first, row->second, mapper, verifySources);
 				m_cm.at(addressOf(n,d)) = Row(row->second);
 			} else {
@@ -168,6 +163,8 @@ ConnectivityMatrix::finalizeForward(
 			//! \todo can delete the map now
 		}
 	}
+
+	m_delays.reset(new runtime::Delays(delays));
 }
 
 
