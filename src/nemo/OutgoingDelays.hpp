@@ -11,42 +11,15 @@
  */
 
 #include <vector>
-#include <map>
-#include <set>
 #include <boost/unordered_map.hpp>
 
 #include <nemo/internal_types.h>
 
 namespace nemo {
 
-/*! Per-neuron collection of outoing delays (accumulation) */
-class OutgoingDelaysAcc
-{
-	public :
-
-		OutgoingDelaysAcc() : m_maxDelay(0) { }
-
-		/*! \param neuron global index 
-		 *  \param delay
-		 */
-		void addDelay(nidx_t neuron, delay_t delay) {
-			m_delays[neuron].insert(delay);
-			m_maxDelay = std::max(m_maxDelay, delay);
-		}
-
-		delay_t maxDelay() const { return m_maxDelay; }
-
-		void clear() { m_delays.clear() ; }
-	
-	private :
-
-		friend class OutgoingDelays;
-
-		std::map<nidx_t, std::set<delay_t> > m_delays;
-
-		delay_t m_maxDelay;
-};
-
+	namespace construction {
+		class Delays;
+	}
 
 
 /*! Per-neuron collection of outgoing delays (run-time) */
@@ -58,7 +31,7 @@ class OutgoingDelays
 		 * \param maxIdx
 		 * 		max source neuron index which will be used for run-time queries
 		 */
-		OutgoingDelays(const OutgoingDelaysAcc&);
+		OutgoingDelays(const construction::Delays&);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 

@@ -68,6 +68,10 @@ namespace network {
 	class Generator;
 }
 
+namespace construction {
+	class Delays;
+}
+
 class ConfigurationImpl;
 struct AxonTerminalAux;
 
@@ -105,7 +109,8 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 * than the ones provided in the underlying synapse. The caller can
 		 * thus provide an appropriate mapping of either index.
 		 */
-		sidx_t addSynapse(nidx_t source, nidx_t target, const Synapse&);
+		sidx_t addSynapse(nidx_t source, nidx_t target,
+				const Synapse&, construction::Delays&);
 
 		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
 
@@ -174,14 +179,14 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/* At run-time, however, we want a fast lookup of the rows. We
 		 * therefore use a vector with linear addressing.  */
 		std::vector<Row> m_cm;
-		void finalizeForward(const mapper_t&, bool verifySources);
+		void finalizeForward(const mapper_t&,
+				const construction::Delays& delays,
+				bool verifySources);
 
 		runtime::RCM m_rcm;
 
 		boost::optional<StdpProcess> m_stdp;
 
-		//! \todo make this a temporary
-		OutgoingDelaysAcc m_delaysAcc;
 		boost::scoped_ptr<OutgoingDelays> m_delays;
 		delay_t m_maxDelay;
 

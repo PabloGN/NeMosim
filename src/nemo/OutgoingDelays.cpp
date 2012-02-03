@@ -1,5 +1,13 @@
-#include <algorithm>
-#include <cassert>
+/* Copyright 2010 Imperial College London
+ *
+ * This file is part of NeMo.
+ *
+ * This software is licenced for non-commercial academic use under the GNU
+ * General Public Licence (GPL). You should have received a copy of this
+ * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <nemo/construction/Delays.hpp>
 
 #include "OutgoingDelays.hpp"
 #include "types.hpp"
@@ -8,8 +16,7 @@
 namespace nemo {
 
 
-
-OutgoingDelays::OutgoingDelays(const OutgoingDelaysAcc& acc) :
+OutgoingDelays::OutgoingDelays(const construction::Delays& acc) :
 	m_maxDelay(0)
 {
 	m_maxDelay = acc.maxDelay();

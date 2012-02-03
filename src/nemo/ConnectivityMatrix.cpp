@@ -18,6 +18,7 @@
 
 #include <nemo/config.h>
 #include <nemo/network/Generator.hpp>
+#include <nemo/construction/Delays.hpp>
 #include "ConfigurationImpl.hpp"
 #include "exception.hpp"
 #include "fixedpoint.hpp"
@@ -75,27 +76,34 @@ ConnectivityMatrix::ConnectivityMatrix(
 		m_stdp = StdpProcess(conf.stdpFunction().get(), m_fractionalBits);
 	}
 
+	//! \todo rename
 	construction::RCM<nidx_t, RSynapse, 32> m_racc(conf, net, RSynapse(~0U,0));
+	construction::Delays delays;
+
 	network::synapse_iterator i = net.synapse_begin(0);
 	network::synapse_iterator i_end = net.synapse_end(0);
 
 	for( ; i != i_end; ++i) {
 		nidx_t source = mapper.localIdx(i->source);
 		nidx_t target = mapper.localIdx(i->target());
-		sidx_t sidx = addSynapse(source, target, *i);
+		sidx_t sidx = addSynapse(source, target, *i, delays);
 		m_racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
 	}
 
 	//! \todo avoid two passes here
 	bool verifySources = true;
-	finalizeForward(mapper, verifySources);
+	finalizeForward(mapper, delays, verifySources);
 	m_rcm = runtime::RCM(m_racc);
 }
 
 
 
 sidx_t
-ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
+ConnectivityMatrix::addSynapse(
+		nidx_t source,
+		nidx_t target,
+		const Synapse& s,
+		construction::Delays& delays)
 {
 	delay_t delay = s.delay;
 	fix_t weight = fx_toFix(s.weight(), m_fractionalBits);
@@ -106,7 +114,7 @@ ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
 	row.push_back(FAxonTerminal(target, weight));
 
 	//! \todo could do this on finalize pass, since there are fewer steps there
-	m_delaysAcc.addDelay(source, delay);
+	delays.addDelay(source, delay);
 
 	if(!m_writeOnlySynapses) {
 		/* The auxillary synapse maps always uses the global (user-specified)
@@ -122,11 +130,13 @@ ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
 
 /* The fast lookup is indexed by source and delay. */
 void
-ConnectivityMatrix::finalizeForward(const mapper_t& mapper, bool verifySources)
+ConnectivityMatrix::finalizeForward(
+		const mapper_t& mapper,
+		const construction::Delays& delays,
+		bool verifySources)
 {
-	m_maxDelay = m_delaysAcc.maxDelay();
-	m_delays.reset(new OutgoingDelays(m_delaysAcc));
-	m_delaysAcc.clear();
+	m_maxDelay = delays.maxDelay();
+	m_delays.reset(new OutgoingDelays(delays));
 
 	if(m_acc.empty()) {
 		return;
