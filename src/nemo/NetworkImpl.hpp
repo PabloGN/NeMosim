@@ -37,7 +37,9 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		NetworkImpl();
 
 		/*! \copydoc nemo::Network::addNeuronType */
-		unsigned addNeuronType(const std::string& name);
+		unsigned addNeuronType(const std::string& name,
+				unsigned nInputs,
+				const unsigned inputs[]);
 
 		/*! \copydoc nemo::Network::addSynapseType */
 		unsigned addSynapseType(const synapse_type&);
@@ -123,6 +125,9 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 
 		/*! \copydoc nemo::network::Generator::neuronType */
 		const NeuronType& neuronType(unsigned) const;
+
+		/*! \copydoc nemo::network::Generator::neuronInputs */
+		const std::vector<unsigned>& neuronInputs(unsigned) const;
 
 	private :
 

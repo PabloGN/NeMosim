@@ -1,6 +1,8 @@
 #ifndef NEMO_NETWORK_GENERATOR_HPP
 #define NEMO_NETWORK_GENERATOR_HPP
 
+#include <vector>
+
 #include <nemo/config.h>
 #include <nemo/types.hpp>
 #include <nemo/network/iterator.hpp>
@@ -61,6 +63,9 @@ class NEMO_BASE_DLL_PUBLIC Generator
 		 * \pre 0 < i < neuronTypeCount()
 		 */
 		virtual const class NeuronType& neuronType(unsigned i) const = 0;
+
+		/*! \return the indices of the synapse types for which neuron type \a i receives inputs */
+		virtual const std::vector<unsigned>& neuronInputs(unsigned i) const = 0;
 };
 
 

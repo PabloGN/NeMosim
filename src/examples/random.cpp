@@ -83,10 +83,9 @@ construct(unsigned ncount, unsigned scount, unsigned dmax, bool stdp)
 
 	nemo::Network* net = new nemo::Network();
 
-	unsigned n_iz = net->addNeuronType("Izhikevich");
-
 	/* Excitatory and inhibitory synapses behave the same way */
 	unsigned synapse = net->addSynapseType();
+	unsigned n_iz = net->addNeuronType("Izhikevich", 1, &synapse);
 
 	for(unsigned nidx=0; nidx < ncount; ++nidx) {
 		if(nidx < (ncount * 4) / 5) { // excitatory

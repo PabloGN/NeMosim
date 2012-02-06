@@ -50,17 +50,28 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 * \param name
 		 * 		canonical name of the neuron type. The neuron type data is
 		 * 		loaded from a plugin configuration file of the same name.
+		 * \param nInputs
+		 * 		number of different synapse input types this neuron model
+		 * 		expects.
+		 * \param inputs
+		 * 		indices of the synapse types from which this neuron type
+		 * 		receives input.
 		 * \return
 		 * 		index of the the neuron type, to be used when adding neurons.
 		 *
 		 * This function must be called before neurons of the specified type
 		 * can be added to the network.
+		 *
+		 * \throws if any of the synapse types do not exist
+		 * \throws if on a subsequent call the synapse types are not the same
 		 */
-		unsigned addNeuronType(const std::string& name);
+		unsigned addNeuronType(const std::string& name,
+				unsigned nInputs,
+				const unsigned inputs[]);
 
 		/*! \brief Register a new synapse type with the network.
 		 *
-		 * \return indx of the synape type, to be used when adding synapses
+		 * \return index of the synape type, to be used when adding synapses
 		 *
 		 * All synapses have the same fundamental type (simple additive).
 		 *

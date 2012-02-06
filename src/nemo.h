@@ -227,15 +227,22 @@ void nemo_delete_network(nemo_network_t);
  * \param name
  * 		canonical name of the neuron type. The neuron type data is loaded from
  * 		a plugin configuration file of the same name.
+ * \param n_inputs
+ * 		number of different synapse input types this neuron model expects.
+ * \param inputs
+ * 		indices of the synapse types from which this neuron type receives input.
  * \param[out] neuron_type
  * 		index of the the neuron type, to be used when adding neurons.
  *
  * \see nemo_add_neuron
+ * \see nemo_add_synapse_type
  */
 NEMO_DLL_PUBLIC
 nemo_status_t
 nemo_add_neuron_type(nemo_network_t,
 		const char* name,
+		unsigned n_inputs,
+		unsigned inputs[],
 		unsigned* neuron_type);
 
 

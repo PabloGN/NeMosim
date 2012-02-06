@@ -170,9 +170,11 @@ nemo_delete_simulation(nemo_simulation_t sim)
 nemo_status_t
 nemo_add_neuron_type(nemo_network_t net,
 		const char* name,
+		unsigned n_inputs,
+		unsigned inputs[],
 		unsigned* type)
 {
-	CATCH(net, addNeuronType(name), *type);
+	CATCH(net, addNeuronType(name, n_inputs, inputs), *type);
 }
 
 

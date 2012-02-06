@@ -230,7 +230,7 @@ construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=tru
 	/* Excitatory and inhibitory synapses behave the same way */
 	unsigned synapse = net->addSynapseType();
 
-	unsigned n_iz = net->addNeuronType("Izhikevich");
+	unsigned n_iz = net->addNeuronType("Izhikevich", 1, &synapse);
 
 	/* The network is a torus which consists of pcount rectangular patches,
 	 * each with dimensions height * width. The size of each patch is the same

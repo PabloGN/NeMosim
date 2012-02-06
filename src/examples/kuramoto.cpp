@@ -25,7 +25,8 @@ class OscillatorNetwork : public nemo::Network
 	public :
 
 		OscillatorNetwork() {
-			m_type = addNeuronType("Kuramoto");
+			unsigned stype[1] = { addSynapseType() };
+			m_type = addNeuronType("Kuramoto", 1, stype);
 		}
 
 		void add(unsigned idx, double frequency, double phase) {

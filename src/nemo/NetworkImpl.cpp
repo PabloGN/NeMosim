@@ -35,15 +35,41 @@ NetworkImpl::NetworkImpl() :
 
 
 unsigned
-NetworkImpl::addNeuronType(const std::string& name)
+NetworkImpl::addNeuronType(
+		const std::string& name,
+		unsigned nInputs,
+		const unsigned inputs[])
 {
+	using boost::format;
+
 	if(m_typeIds.find(name) == m_typeIds.end()) {
+
+		for(unsigned s=0; s < nInputs; ++s) {
+			if(inputs[s] >= m_synapses.size()) {
+				throw nemo::exception(NEMO_INVALID_INPUT,
+						str(format("Invalid synapse id (%u) used as input to neuron type %s")
+							% inputs[s] % name));
+			}
+		}
+
 		unsigned type_id = m_neurons.size();
-		m_neurons.push_back(Neurons(NeuronType(name)));
+		m_neurons.push_back(Neurons(
+					NeuronType(name, nInputs),
+					std::vector<unsigned>(inputs, inputs+nInputs)));
 		m_typeIds[name] = type_id;
 		return type_id;
 	} else {
-		return m_typeIds[name];
+
+		unsigned idx = m_typeIds[name];
+		const std::vector<unsigned>& ns = m_neurons[idx].inputs();
+
+		if(!std::equal(ns.begin(), ns.end(), inputs)) {
+			throw nemo::exception(NEMO_INVALID_INPUT,
+					str(format("Neuron type %s added multiple times with different inputs") % name));
+		}
+		//! \todo deprecate creating the same type multiple times
+
+		return idx;
 	}
 }
 
@@ -65,10 +91,15 @@ NetworkImpl::addSynapseType(const synapse_type& type)
 const NeuronType&
 NetworkImpl::neuronType(unsigned id) const
 {
-	if(m_neurons.size() == 0) {
-		throw nemo::exception(NEMO_LOGIC_ERROR, "No neurons in network, so neuron type unkown");
-	}
-	return m_neurons.at(id).type();
+	return neuronCollection(id).type();
+}
+
+
+
+const std::vector<unsigned>&
+NetworkImpl::neuronInputs(unsigned id) const
+{
+	return neuronCollection(id).inputs();
 }
 
 

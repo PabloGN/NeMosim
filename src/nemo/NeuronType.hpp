@@ -21,6 +21,7 @@ namespace nemo {
  *
  * - the data it contains
  * - its dynamics 
+ * - the inputs it requires
  *
  * This class is concerned only with the type of data it contains. The
  * simulation data can be set up based on this, regardless of the neuron
@@ -34,7 +35,7 @@ class NEMO_BASE_DLL_PUBLIC NeuronType
 
 		/*! Initialise a neuron type from a neuron type description file, in
 		 * .ini format located in one of NeMo's plugin directories */
-		explicit NeuronType(const std::string& name);
+		NeuronType(const std::string& name, unsigned nInputs);
 
 		/* \return number of floating point parameters */
 		size_t parameterCount() const { return m_nParam; }
@@ -77,6 +78,9 @@ class NEMO_BASE_DLL_PUBLIC NeuronType
 		 * generator? */
 		bool m_nrand;
 
+		/* Forward connectivity matrix */
+		size_t m_nInputs;
+
 		/* Fields of the reverse connectivity matrix */
 		bool m_rcmSources;
 		bool m_rcmDelays;
@@ -90,7 +94,7 @@ class NEMO_BASE_DLL_PUBLIC NeuronType
 		 * of the system (e.g. a thread). */
 		unsigned m_stateHistory;
 
-		void parseConfigurationFile(const std::string& name);
+		void parseConfigurationFile(const std::string& name, unsigned nInputs);
 };
 
 }

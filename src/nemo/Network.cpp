@@ -29,9 +29,12 @@ Network::~Network()
 
 
 unsigned
-Network::addNeuronType(const std::string& name)
+Network::addNeuronType(
+		const std::string& name,
+		unsigned nInputs,
+		const unsigned inputs[])
 {
-	return m_impl->addNeuronType(name);
+	return m_impl->addNeuronType(name, nInputs, inputs);
 }
 
 
