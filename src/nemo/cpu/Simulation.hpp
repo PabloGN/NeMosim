@@ -66,7 +66,7 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 #ifdef NEMO_BRIAN_ENABLED
 		/*! \copydoc nemo::Simulation::propagate */
-		float* propagate(uint32_t*, int nfired);
+		float* propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired);
 #endif
 
 		/*! \copydoc nemo::SimulationBackend::readFiring */
@@ -138,11 +138,8 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		typedef boost::shared_ptr<nemo::ConnectivityMatrix> cm_t;
 		std::vector<cm_t> m_cm;
 
-		/* Per-neuron accumulated current from EPSPs */
-		std::vector<float> m_currentE;
-
-		/* Per-neuron accumulated current from IPSPs */
-		std::vector<float> m_currentI;
+		/*! Per-neuron accumulators for different synapse types */
+		std::vector< std::vector<float> > m_accumulator;
 
 		/* Per-neuron user-provided input current */
 		std::vector<float> m_currentExt;
@@ -156,7 +153,7 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		/*! Deliver spikes due for delivery.
 		 *
-		 * Updates m_currentE and m_currentI
+		 * Updates all accumulators in m_accumulator.
 		 */
 		void deliverSpikes();
 

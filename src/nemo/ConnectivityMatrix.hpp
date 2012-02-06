@@ -169,12 +169,12 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/*! Deliver all spikes currently due
 		 *
 		 * \param cycle current simulation cycle
-		 * \param recentFiring per-neuron bit-vector of recent firing history
+		 * \param[in] recentFiring per-neuron bit-vector of recent firing history
+		 * \param[out] accumulator
 		 */
 		void deliverSpikes(unsigned long cycle,
 				const std::vector<uint64_t>& recentFiring,
-				std::vector<float>& currentE,
-				std::vector<float>& currentI);
+				std::vector<float>& accumulator);
 
 	private:
 
@@ -241,8 +241,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		bool m_writeOnlySynapses;
 
-		std::vector<wfix_t> mfx_currentE;
-		std::vector<wfix_t> mfx_currentI;
+		std::vector<wfix_t> mfx_accumulator;
 };
 
 

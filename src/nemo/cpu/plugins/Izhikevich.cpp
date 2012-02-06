@@ -19,8 +19,7 @@ cpu_update_neurons(
 		unsigned fbits,
 		unsigned fstim[],
 		RNG rng[],
-		float currentEPSP[],
-		float currentIPSP[],
+		float* accumulators[],
 		float currentExternal[],
 		uint64_t recentFiring[],
 		unsigned fired[],
@@ -31,6 +30,8 @@ cpu_update_neurons(
 	const float* c = paramBase + PARAM_C * paramStride;
 	const float* d = paramBase + PARAM_D * paramStride;
 	const float* sigma = paramBase + PARAM_SIGMA * paramStride;
+
+	const float* current = accumulators[0];
 
 	const size_t historyLength = 1;
 
@@ -55,9 +56,9 @@ cpu_update_neurons(
 
 		unsigned ng = start + nl;
 
-		float I = currentEPSP[ng] + currentIPSP[ng] + currentExternal[ng];
+		float I = current[ng] + currentExternal[ng];
 
-		/* no need to clear current?PSP. */
+		/* no need to clear current array  */
 
 		//! \todo clear this outside kernel
 		currentExternal[ng] = 0.0f;

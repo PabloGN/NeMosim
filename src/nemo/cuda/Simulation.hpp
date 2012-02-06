@@ -229,7 +229,7 @@ class Simulation : public nemo::SimulationBackend
 
 #ifdef NEMO_BRIAN_ENABLED
 		/*! \copydoc nemo::Simulation::propagate */
-		float* propagate(uint32_t*, int nfired);
+		float* propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired);
 #endif
 
 		/*! \copydoc nemo::SimulationBackend::readFiring */

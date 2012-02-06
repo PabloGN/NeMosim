@@ -25,8 +25,6 @@ Simulation::Simulation(
 	m_fractionalBits(conf.fractionalBits()),
 	m_fired(m_neuronCount, 0),
 	m_recentFiring(m_neuronCount, 0),
-	m_currentE(m_neuronCount, 0.0f),
-	m_currentI(m_neuronCount, 0.0f),
 	m_currentExt(m_neuronCount, 0.0f),
 	m_fstim(m_neuronCount, 0)
 {
@@ -57,6 +55,7 @@ Simulation::Simulation(
 
 	for(unsigned typeIdx=0; typeIdx < net.synapseTypeCount(); ++typeIdx) {
 		m_cm.push_back(cm_t(new nemo::ConnectivityMatrix(net, conf, m_mapper, typeIdx)));
+		m_accumulator.push_back(std::vector<float>(m_neuronCount, 0.0f));
 	}
 
 	resetTimer();
@@ -76,13 +75,20 @@ void
 Simulation::fire()
 {
 	deliverSpikes();
+
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
+
+		/* Each neuron model plugin expects a certain number of accumulators */
+		//! \todo deal with multiple accumulators here
+		std::vector<float*> accumulators(1U, NULL);
+		accumulators.at(0) = &(m_accumulator.front()[0]);
+
 		//! \todo deal with use of the RCM here.
-		//! \todo deal correctly with different accumulators here
 		(*i)->update(
 			m_timer.elapsedSimulation(), getFractionalBits(),
-			&m_currentE[0], &m_currentI[0], &m_currentExt[0],
+			&accumulators[0],
+			&m_currentExt[0],
 			&m_fstim[0], &m_recentFiring[0], &m_fired[0],
 			NULL
 #warning "Kuramoto plugin will not work"
@@ -102,7 +108,7 @@ Simulation::fire()
 
 #ifdef NEMO_BRIAN_ENABLED
 float*
-Simulation::propagate(uint32_t* fired, int nfired)
+Simulation::propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired)
 {
 	//! \todo assert that STDP is not enabled
 
@@ -117,12 +123,12 @@ Simulation::propagate(uint32_t* fired, int nfired)
 		uint32_t n = fired[i];
 		m_recentFiring[n] |= uint64_t(1);
 	}
-	deliverSpikes();
+
+	//! \todo error handling
+	m_cm.at(synapseTypeIdx)->deliverSpikes(elapsedSimulation(), m_recentFiring, m_accumulator.at(synapseTypeIdx));
 	m_timer.step();
 
-	/* When Brian extensions are enabled all accumulation goes into a single
-	 * variable, m_currentE. */ 
-	return &m_currentE[0];
+	return &m_accumulator[synapseTypeIdx][0];
 }
 #endif
 
@@ -252,14 +258,12 @@ Simulation::applyStdp(float reward)
 void
 Simulation::deliverSpikes()
 {
+	size_t i = 0;
 	for(std::vector<cm_t>::iterator cm = m_cm.begin();
-			cm != m_cm.end(); ++cm) {
-		//! \todo deal correctly with multiple accumulators
-		//! \todo collapse these into a single accumulator
+			cm != m_cm.end(); ++cm, ++i) {
 		(*cm)->deliverSpikes(elapsedSimulation(),
 				m_recentFiring,
-				m_currentE,
-				m_currentI);
+				m_accumulator.at(i));
 	}
 }
 

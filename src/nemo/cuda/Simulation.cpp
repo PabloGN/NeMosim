@@ -439,7 +439,7 @@ Simulation::postfire()
 #ifdef NEMO_BRIAN_ENABLED
 
 float*
-Simulation::propagate(uint32_t* d_fired, int nfired)
+Simulation::propagate(unsigned synapseTypeIdx, uint32_t* d_fired, int nfired)
 {
 	assert_or_throw(!m_stdp, "Brian-specific function propagate only well-defined when STDP is not enabled");
 	runKernel(::compact(m_streamCompute,

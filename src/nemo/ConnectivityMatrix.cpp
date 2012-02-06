@@ -94,8 +94,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 	m_fractionalBits(conf.fractionalBits()),
 	m_maxDelay(0),
 	m_writeOnlySynapses(conf.writeOnlySynapses()),
-	mfx_currentE(m_neuronCount, 0U),
-	mfx_currentI(m_neuronCount, 0U)
+	mfx_accumulator(m_neuronCount, 0U)
 {
 	if(conf.stdpFunction()) {
 		m_stdp = StdpProcess(conf.stdpFunction().get(), m_fractionalBits);
@@ -460,8 +459,7 @@ void
 ConnectivityMatrix::deliverSpikes(
 		unsigned long cycle,
 		const std::vector<uint64_t>& recentFiring,
-		std::vector<float>& currentE,
-		std::vector<float>& currentI)
+		std::vector<float>& accumulator)
 {
 	/* Ignore spikes outside of max delay. We keep these older spikes as they
 	 * may be needed for STDP */
@@ -482,12 +480,7 @@ ConnectivityMatrix::deliverSpikes(
 
 			for(unsigned s=0; s < row.len; ++s) {
 				const FAxonTerminal& terminal = row[s];
-#ifdef NEMO_SINGLE_CURRENT
-				std::vector<wfix_t>& current = mfx_currentE;
-#else
-				std::vector<wfix_t>& current = terminal.weight >= 0 ? mfx_currentE : mfx_currentI;
-#endif
-				current.at(terminal.target) += terminal.weight;
+				mfx_accumulator.at(terminal.target) += terminal.weight;
 				LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
 						cycle,
 						m_mapper.globalIdx(source),
@@ -500,12 +493,8 @@ ConnectivityMatrix::deliverSpikes(
 	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
 #pragma omp parallel for default(shared)
 	for(int n=0; n < ncount; n++) {
-		currentE[n] = wfx_toFloat(mfx_currentE[n], m_fractionalBits);
-		mfx_currentE[n] = 0U;
-#ifndef NEMO_SINGLE_CURRENT
-		currentI[n] = wfx_toFloat(mfx_currentI[n], m_fractionalBits);
-		mfx_currentI[n] = 0U;
-#endif
+		accumulator[n] = wfx_toFloat(mfx_accumulator[n], m_fractionalBits);
+		mfx_accumulator[n] = 0U;
 	}
 }
 
