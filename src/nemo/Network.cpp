@@ -51,33 +51,11 @@ Network::addNeuron(unsigned type, unsigned idx,
 }
 
 
-void
-Network::addNeuron(unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	if(iz_type == ~0U) {
-		iz_type = m_impl->addNeuronType("Izhikevich");
-	}
-	float args[7] = {a, b, c, d, sigma, u, v};
-	m_impl->addNeuron(iz_type, idx, 7, args);
-}
-
 
 void
 Network::setNeuron(unsigned idx, unsigned nargs, const float args[])
 {
 	m_impl->setNeuron(idx, nargs, args);
-}
-
-
-void
-Network::setNeuron(unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	float args[7] = {a, b, c, d, sigma, u, v};
-	m_impl->setNeuron(idx, 7, args);
 }
 
 

@@ -132,14 +132,6 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		 */
 		virtual void setNeuron(unsigned idx, unsigned nargs, const float args[]) = 0;
 
-		/*! Change an existing Izhikevich neuron.
-		 *
-		 * \see nemo::Network::addNeuron for parameters
-		 */
-		void setNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
-
 		/*! \copydoc nemo::Network::setNeuronState */
 		virtual void setNeuronState(unsigned neuron, unsigned var, float value) = 0;
 

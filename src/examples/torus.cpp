@@ -66,7 +66,11 @@ neuronIndex(unsigned patch, unsigned x, unsigned y)
 
 
 void
-addExcitatoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
+addExcitatoryNeuron(
+		nemo::Network* net,
+		unsigned ntype,
+		unsigned nidx,
+		urng_t& param)
 {
 	float v = -65.0f;
 	float a = 0.02f;
@@ -77,13 +81,18 @@ addExcitatoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
 	float d = 8.0f - 6.0f * r2 * r2;
 	float u = b * v;
 	float sigma = 5.0f;
-	net->addNeuron(nidx, a, b, c, d, u, v, sigma);
+	float args[7] = {a, b, c, d, sigma, u, v};
+	net->addNeuron(ntype, nidx, 7, args);
 }
 
 
 
 void
-addInhibitoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
+addInhibitoryNeuron(
+		nemo::Network* net,
+		unsigned ntype,
+		unsigned nidx,
+		urng_t& param)
 {
 	float v = -65.0f;
 	float r1 = float(param());
@@ -94,7 +103,8 @@ addInhibitoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
 	float d = 2.0f;
 	float u = b * v;
 	float sigma = 2.0f;
-	net->addNeuron(nidx, a, b, c, d, u, v, sigma);
+	float args[7] = {a, b, c, d, sigma, u, v};
+	net->addNeuron(ntype, nidx, 7, args);
 }
 
 
@@ -220,6 +230,8 @@ construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=tru
 	/* Excitatory and inhibitory synapses behave the same way */
 	unsigned synapse = net->addSynapseType();
 
+	unsigned n_iz = net->addNeuronType("Izhikevich");
+
 	/* The network is a torus which consists of pcount rectangular patches,
 	 * each with dimensions height * width. The size of each patch is the same
 	 * as the partition size on the device. */
@@ -266,12 +278,12 @@ construct(unsigned pcount, unsigned m, bool stdp, double sigma, bool logging=tru
 			for(unsigned x = 0; x < width; ++x) {
 				unsigned nidx = neuronIndex(p, x, y);
 				if(isExcitatory()) {
-					addExcitatoryNeuron(net, nidx, randomParameter);
+					addExcitatoryNeuron(net, n_iz, nidx, randomParameter);
 					addExcitatorySynapses(net, synapse, p, x, y, pcount, m,
 							distanceEx, angle, randomParameter);
 					exCount++;
 				} else {
-					addInhibitoryNeuron(net, nidx, randomParameter);
+					addInhibitoryNeuron(net, n_iz, nidx, randomParameter);
 					addInhibitorySynapses(net, synapse, p, x, y, pcount, m,
 							distanceIn, angle, randomParameter);
 					inCount++;

@@ -27,7 +27,10 @@ namespace nemo {
 	namespace random {
 
 void
-addExcitatoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
+addExcitatoryNeuron(nemo::Network* net,
+		unsigned ntype,
+		unsigned nidx,
+		urng_t& param)
 {
 	float v = -65.0f;
 	float a = 0.02f;
@@ -38,13 +41,17 @@ addExcitatoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
 	float d = 8.0f - 6.0f * r2 * r2;
 	float u = b * v;
 	float sigma = 5.0f;
-	net->addNeuron(nidx, a, b, c, d, u, v, sigma);
+	float args[7] = {a, b, c, d, sigma, u, v};
+	net->addNeuron(ntype, nidx, 7, args);
 }
 
 
 
 void
-addInhibitoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
+addInhibitoryNeuron(nemo::Network* net,
+		unsigned ntype,
+		unsigned nidx,
+		urng_t& param)
 {
 	float v = -65.0f;
 	float r1 = float(param());
@@ -55,7 +62,8 @@ addInhibitoryNeuron(nemo::Network* net, unsigned nidx, urng_t& param)
 	float d = 2.0f;
 	float u = b * v;
 	float sigma = 2.0f;
-	net->addNeuron(nidx, a, b, c, d, u, v, sigma);
+	float args[7] = {a, b, c, d, sigma, u, v};
+	net->addNeuron(ntype, nidx, 7, args);
 }
 
 
@@ -75,17 +83,19 @@ construct(unsigned ncount, unsigned scount, unsigned dmax, bool stdp)
 
 	nemo::Network* net = new nemo::Network();
 
+	unsigned n_iz = net->addNeuronType("Izhikevich");
+
 	/* Excitatory and inhibitory synapses behave the same way */
 	unsigned synapse = net->addSynapseType();
 
 	for(unsigned nidx=0; nidx < ncount; ++nidx) {
 		if(nidx < (ncount * 4) / 5) { // excitatory
-			addExcitatoryNeuron(net, nidx, randomParameter);
+			addExcitatoryNeuron(net, n_iz, nidx, randomParameter);
 			for(unsigned s = 0; s < scount; ++s) {
 				net->addSynapse(synapse, nidx, randomTarget(), randomDelay(), 0.5f * float(randomParameter()));
 			}
 		} else { // inhibitory
-			addInhibitoryNeuron(net, nidx, randomParameter);
+			addInhibitoryNeuron(net, n_iz, nidx, randomParameter);
 			for(unsigned s = 0; s < scount; ++s) {
 				net->addSynapse(synapse, nidx, randomTarget(), 1U, float(-randomParameter()));
 			}

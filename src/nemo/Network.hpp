@@ -86,40 +86,6 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		void addNeuron(unsigned type, unsigned idx,
 				unsigned nargs, const float args[]);
 
-		/*! \brief Add a single Izhikevich neuron to the network
-		 *
-		 * The neuron uses the Izhikevich neuron model. See E. M. Izhikevich
-		 * "Simple model of spiking neurons", \e IEEE \e Trans. \e Neural \e
-		 * Networks, vol 14, pp 1569-1572, 2003 for a full description of the
-		 * model and the parameters.
-		 *
-		 * \param idx
-		 * 		Neuron index. This should be unique
-		 * \param a
-		 * 		Time scale of the recovery variable \a u
-		 * \param b
-		 * 		Sensitivity to sub-threshold fluctutations in the membrane
-		 * 		potential \a v
-		 * \param c
-		 * 		After-spike reset value of the membrane potential \a v
-		 * \param d
-		 * 		After-spike reset of the recovery variable \a u
-		 * \param u
-		 * 		Initial value for the membrane recovery variable
-		 * \param v
-		 * 		Initial value for the membrane potential
-		 * \param sigma
-		 * 		Parameter for a random gaussian per-neuron process which
-		 * 		generates random input current drawn from an N(0,\a sigma)
-		 * 		distribution. If set to zero no random input current will be
-		 * 		generated.
-		 *
- 		 * \deprecated in favour of the generic Network::addNeuron function
-		 */
-		void addNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
-
 		/*! Set an existing neuron
 		 *
 		 * \param idx
@@ -134,16 +100,6 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 * 		added.
 		 */
 		void setNeuron(unsigned idx, unsigned nargs, const float args[]);
-
-		/*! Change parameters/state variables of a single existing Izhikevich-type neuron
-		 *
-		 * The parameters are the same as for \a nemo::Network::addNeuron
-		 *
- 		 * \deprecated in favour of the generic nemo::Network::setNeuron function
-		 */
-		void setNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
 
 		/* Add a single synapse and return its unique id */
 		synapse_id addSynapse(

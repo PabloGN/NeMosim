@@ -239,17 +239,6 @@ nemo_add_neuron_type(nemo_network_t,
 		unsigned* neuron_type);
 
 
-/*! \brief Add a single Izhikevich neuron to the network
- * \deprecated in favour of the generic nemo_add_neuron() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_add_neuron_iz(nemo_network_t,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
-
-
 
 /*! Add a neuron to the network
  *
@@ -627,36 +616,6 @@ nemo_set_neuron_n(nemo_network_t, unsigned idx, unsigned nargs, float args[]);
 NEMO_DLL_PUBLIC
 nemo_status_t
 nemo_set_neuron_s(nemo_simulation_t, unsigned idx, unsigned nargs, float args[]);
-
-
-/*! Modify the parameters/state for a single Izhikevich neuron during construction
- *
- * The neuron must already exist.
- *
- * \see nemo_add_neuron for parameters
- * \deprecated in favour of the generic nemo_set_neuron_n() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_set_neuron_iz_n(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
-
-
-/*! Modify the parameters/state for a single Izhikevich neuron during simulation
- *
- * The neuron must already exist.
- *
- * \see nemo_add_neuron for parameters
- * \deprecated in favour of the generic nemo_set_neuron_s() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_set_neuron_iz_s(nemo_simulation_t sim,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
 
 
 /*! Modify a single state variable for a single neuron during construction

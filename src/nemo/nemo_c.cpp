@@ -178,17 +178,6 @@ nemo_add_neuron_type(nemo_network_t net,
 
 
 nemo_status_t
-nemo_add_neuron_iz(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(net, addNeuron(idx, a, b, c, d, u, v, sigma));
-}
-
-
-
-nemo_status_t
 nemo_add_neuron(nemo_network_t net,
 		unsigned type, unsigned idx,
 		unsigned nargs, float args[])
@@ -275,26 +264,6 @@ nemo_set_neuron_s(nemo_simulation_t sim, unsigned idx, unsigned nargs, float arg
 	CATCH_(sim, setNeuron(idx, nargs, args));
 }
 
-
-
-nemo_status_t
-nemo_set_neuron_iz_n(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(net, setNeuron(idx, a, b, c, d, u, v, sigma));
-}
-
-
-nemo_status_t
-nemo_set_neuron_iz_s(nemo_simulation_t sim,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(sim, setNeuron(idx, a, b, c, d, u, v, sigma));
-}
 
 
 nemo_status_t

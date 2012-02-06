@@ -78,6 +78,7 @@ INSTALL(FILES
 		Network.hpp
 		Simulation.hpp
 		ReadableNetwork.hpp
+		izhikevich.hpp
 		${CMAKE_CURRENT_BINARY_DIR}/config.h
 	DESTINATION ${INSTALL_INCLUDE_DIR}/nemo
 )
