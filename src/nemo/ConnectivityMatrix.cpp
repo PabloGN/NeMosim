@@ -66,7 +66,8 @@ insert(size_t idx, const T& val, std::vector<T>& vec)
 ConnectivityMatrix::ConnectivityMatrix(
 		const network::Generator& net,
 		const ConfigurationImpl& conf,
-		const mapper_t& mapper) :
+		const mapper_t& mapper,
+		unsigned typeIdx) :
 	m_mapper(mapper),
 	m_fractionalBits(conf.fractionalBits()),
 	m_maxDelay(0),
@@ -78,8 +79,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 
 	construction::RCM<nidx_t, RSynapse, 32> racc(conf, net, RSynapse(~0U,0));
 
-	network::synapse_iterator i = net.synapse_begin(0);
-	network::synapse_iterator i_end = net.synapse_end(0);
+	network::synapse_iterator i = net.synapse_begin(typeIdx);
+	network::synapse_iterator i_end = net.synapse_end(typeIdx);
 
 	for( ; i != i_end; ++i) {
 		nidx_t source = mapper.localIdx(i->source);
@@ -424,7 +425,8 @@ ConnectivityMatrix::delay_end(nidx_t source) const
 
 
 const std::vector<uint64_t>&
-ConnectivityMatrix::delayBits() const {
+ConnectivityMatrix::delayBits() const
+{
 	return m_delays->delayBits();
 }
 

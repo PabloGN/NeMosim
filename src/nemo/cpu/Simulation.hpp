@@ -137,7 +137,8 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		/* last 64 cycles worth of firing, one entry per neuron */
 		std::vector<uint64_t> m_recentFiring;
 
-		boost::scoped_ptr<nemo::ConnectivityMatrix> m_cm;
+		typedef boost::shared_ptr<nemo::ConnectivityMatrix> cm_t;
+		std::vector<cm_t> m_cm;
 
 		/* Per-neuron accumulated current from EPSPs */
 		std::vector<wfix_t> mfx_currentE;
@@ -167,7 +168,7 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		FiringBuffer m_firingBuffer;
 
-		void deliverSpikesOne(nidx_t source, delay_t delay);
+		void deliverSpikesOne(cm_t&, nidx_t source, delay_t delay);
 
 		Timer m_timer;
 

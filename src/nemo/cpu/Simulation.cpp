@@ -72,11 +72,9 @@ Simulation::Simulation(
 		m_neurons.push_back(ns);
 	}
 
-	if(net.synapseTypeCount() != 1) {
-		throw nemo::exception(NEMO_API_UNSUPPORTED, "Exactly one synapse type expected");
+	for(unsigned typeIdx=0; typeIdx < net.synapseTypeCount(); ++typeIdx) {
+		m_cm.push_back(cm_t(new nemo::ConnectivityMatrix(net, conf, m_mapper, typeIdx)));
 	}
-
-	m_cm.reset(new nemo::ConnectivityMatrix(net, conf, m_mapper));
 
 	resetTimer();
 }
@@ -97,15 +95,21 @@ Simulation::fire()
 	deliverSpikes();
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
+		//! \todo deal with use of the RCM here.
 		(*i)->update(
 			m_timer.elapsedSimulation(), getFractionalBits(),
 			&m_currentE[0], &m_currentI[0], &m_currentExt[0],
 			&m_fstim[0], &m_recentFiring[0], &m_fired[0],
-			const_cast<void*>(static_cast<const void*>(m_cm->rcm())));
+			NULL
+#warning "Kuramoto plugin will not work"
+			//const_cast<void*>(static_cast<const void*>(m_cm->rcm()))
+			);
 	}
 
+#ifdef NEMO_STDP_ENABLED
 	//! \todo do this in the postfire step
 	m_cm->accumulateStdp(m_recentFiring);
+#endif
 	setFiring();
 	m_timer.step();
 }
@@ -252,7 +256,11 @@ Simulation::setNeuronParameter(unsigned g_idx, unsigned parameter, float val)
 void
 Simulation::applyStdp(float reward)
 {
+#ifdef NEMO_STDP_ENABLED
 	m_cm->applyStdp(reward);
+#else
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo does not support STDP");
+#endif
 }
 
 
@@ -262,10 +270,14 @@ Simulation::deliverSpikes()
 {
 	/* Ignore spikes outside of max delay. We keep these older spikes as they
 	 * may be needed for STDP */
-	uint64_t validSpikes = ~(((uint64_t) (~0)) << m_cm->maxDelay());
+	for(std::vector<cm_t>::iterator cm = m_cm.begin();
+			cm != m_cm.end(); ++cm) {
 
-	const std::vector<uint64_t> delays = m_cm->delayBits();
+	uint64_t validSpikes = ~(((uint64_t) (~0)) << (*cm)->maxDelay());
 
+	const std::vector<uint64_t> delays = (*cm)->delayBits();
+
+	//! \todo move the whole loop into separate function, then a loadable module
 	for(size_t source=0; source < m_neuronCount; ++source) {
 
 		uint64_t f = m_recentFiring[source] & validSpikes & delays[source];
@@ -275,11 +287,12 @@ Simulation::deliverSpikes()
 			int shift = 1 + ctz64(f);
 			delay += shift;
 			f = f >> shift;
-			deliverSpikesOne(source, delay);
+			deliverSpikesOne(*cm, source, delay);
 		}
 	}
+	}
 
-	/* convert current back to float */
+	/* Migrate this to stand-alone function */
 	unsigned fbits = getFractionalBits();
 	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
 #pragma omp parallel for default(shared)
@@ -295,10 +308,11 @@ Simulation::deliverSpikes()
 
 
 
+//! \todo move this to CM class
 void
-Simulation::deliverSpikesOne(nidx_t source, delay_t delay)
+Simulation::deliverSpikesOne(cm_t& cm, nidx_t source, delay_t delay)
 {
-	const nemo::Row& row = m_cm->getRow(source, delay);
+	const nemo::Row& row = cm->getRow(source, delay);
 
 	for(unsigned s=0; s < row.len; ++s) {
 		const FAxonTerminal& terminal = row[s];
@@ -350,7 +364,10 @@ Simulation::getMembranePotential(unsigned g_idx) const
 const std::vector<synapse_id>&
 Simulation::getSynapsesFrom(unsigned neuron)
 {
-	return m_cm->getSynapsesFrom(neuron);
+#warning "Unsupported function"
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
+	//! \todo combine the synapses from different neurons
+	// return m_cm->getSynapsesFrom(neuron);
 }
 
 
@@ -358,7 +375,9 @@ Simulation::getSynapsesFrom(unsigned neuron)
 unsigned
 Simulation::getSynapseTarget(const synapse_id& synapse) const
 {
-	return m_cm->getTarget(synapse);
+#warning "Unsupported function"
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
+	// return m_cm->getTarget(synapse);
 }
 
 
@@ -366,7 +385,9 @@ Simulation::getSynapseTarget(const synapse_id& synapse) const
 unsigned
 Simulation::getSynapseDelay(const synapse_id& synapse) const
 {
-	return m_cm->getDelay(synapse);
+#warning "Unsupported function"
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
+	//return m_cm->getDelay(synapse);
 }
 
 
@@ -374,7 +395,9 @@ Simulation::getSynapseDelay(const synapse_id& synapse) const
 float
 Simulation::getSynapseWeight(const synapse_id& synapse) const
 {
-	return m_cm->getWeight(synapse);
+#warning "Unsupported function"
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
+	//return m_cm->getWeight(synapse);
 }
 
 
@@ -382,7 +405,9 @@ Simulation::getSynapseWeight(const synapse_id& synapse) const
 unsigned char
 Simulation::getSynapsePlastic(const synapse_id& synapse) const
 {
-	return m_cm->getPlastic(synapse);
+#warning "Unsupported function"
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
+	//return m_cm->getPlastic(synapse);
 }
 
 

@@ -81,10 +81,13 @@ struct AxonTerminalAux;
  * accessed at construction time, while others should only be accessed at
  * run-time. This constraint is not enforced by the interface */
 
-/* Generic connectivity matrix
+/*! Generic connectivity matrix
  *
  * Data in this class is organised for optimal cache performance. A
  * user-defined fixed-point format is used.
+ *
+ * The connectivity matrix contains all the synapses of a specific type. A
+ * network may contain more than one synapse type.
  */
 class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 {
@@ -92,16 +95,19 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		typedef RandomMapper<nidx_t> mapper_t;
 
-		/*! Populate runtime CM from existing network.
+		/*! Populate runtime CM for a single synapse type from existing network
 		 *
 		 * The mapper can translate neuron indices (both source and target)
 		 * from one index space to another. All later accesses to the CM data
 		 * are assumed to be in terms of the translated indices.
+		 *
+		 * \pre typeIdx < net->synapseTypeCount()
 		 */
 		ConnectivityMatrix(
 				const network::Generator& net,
 				const ConfigurationImpl& conf,
-				const mapper_t&);
+				const mapper_t&,
+				unsigned typeIdx);
 
 		/*! Add synapse with pre-mapped source and target
 		 *
