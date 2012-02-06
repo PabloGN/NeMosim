@@ -13,16 +13,37 @@
 #include <utility>
 #include <stdlib.h>
 
-#include <boost/tuple/tuple_comparison.hpp>
 #include <boost/format.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include <nemo/config.h>
-#include <nemo/network/Generator.hpp>
+
+#ifdef NEMO_CPU_OPENMP_ENABLED
+#include <omp.h>
+#endif
+
+#include <nemo/bitops.h>
 #include <nemo/construction/Delays.hpp>
+#include <nemo/network/Generator.hpp>
 #include "ConfigurationImpl.hpp"
 #include "exception.hpp"
 #include "fixedpoint.hpp"
 #include "synapse_indices.hpp"
+
+
+#ifdef NEMO_CPU_DEBUG_TRACE
+
+#include <cstdio>
+#include <cstdlib>
+
+#define LOG(...) fprintf(stdout, __VA_ARGS__);
+
+#else
+
+#define LOG(...)
+
+#endif
 
 
 namespace nemo {
@@ -69,9 +90,12 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const mapper_t& mapper,
 		unsigned typeIdx) :
 	m_mapper(mapper),
+	m_neuronCount(mapper.maxGlobalIdx() + 1),
 	m_fractionalBits(conf.fractionalBits()),
 	m_maxDelay(0),
-	m_writeOnlySynapses(conf.writeOnlySynapses())
+	m_writeOnlySynapses(conf.writeOnlySynapses()),
+	mfx_currentE(m_neuronCount, 0U),
+	mfx_currentI(m_neuronCount, 0U)
 {
 	if(conf.stdpFunction()) {
 		m_stdp = StdpProcess(conf.stdpFunction().get(), m_fractionalBits);
@@ -429,6 +453,62 @@ ConnectivityMatrix::delayBits() const
 {
 	return m_delays->delayBits();
 }
+
+
+
+void
+ConnectivityMatrix::deliverSpikes(
+		unsigned long cycle,
+		const std::vector<uint64_t>& recentFiring,
+		std::vector<float>& currentE,
+		std::vector<float>& currentI)
+{
+	/* Ignore spikes outside of max delay. We keep these older spikes as they
+	 * may be needed for STDP */
+	uint64_t validSpikes = ~(((uint64_t) (~0)) << maxDelay());
+	const std::vector<uint64_t> delays = delayBits();
+
+	//! \todo move the whole loop into separate function, then a loadable module
+	for(size_t source=0; source < m_neuronCount; ++source) {
+
+		uint64_t f = recentFiring[source] & validSpikes & delays[source];
+
+		int delay = 0;
+		while(f) {
+			int shift = 1 + ctz64(f);
+			delay += shift;
+			f = f >> shift;
+			const Row& row = getRow(source, delay);
+
+			for(unsigned s=0; s < row.len; ++s) {
+				const FAxonTerminal& terminal = row[s];
+#ifdef NEMO_SINGLE_CURRENT
+				std::vector<wfix_t>& current = mfx_currentE;
+#else
+				std::vector<wfix_t>& current = terminal.weight >= 0 ? mfx_currentE : mfx_currentI;
+#endif
+				current.at(terminal.target) += terminal.weight;
+				LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
+						cycle,
+						m_mapper.globalIdx(source),
+						m_mapper.globalIdx(terminal.target),
+						fx_toFloat(terminal.weight, m_fractionalBits), delay);
+			}
+		}
+	}
+
+	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
+#pragma omp parallel for default(shared)
+	for(int n=0; n < ncount; n++) {
+		currentE[n] = wfx_toFloat(mfx_currentE[n], m_fractionalBits);
+		mfx_currentE[n] = 0U;
+#ifndef NEMO_SINGLE_CURRENT
+		currentI[n] = wfx_toFloat(mfx_currentI[n], m_fractionalBits);
+		mfx_currentI[n] = 0U;
+#endif
+	}
+}
+
 
 
 } // namespace nemo

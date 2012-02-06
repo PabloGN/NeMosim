@@ -124,8 +124,6 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		RandomMapper<nidx_t> m_mapper;
 
-		typedef std::vector<fix_t> current_vector_t;
-
 		//! \todo can we get rid of this?
 		size_t m_neuronCount;
 
@@ -141,11 +139,9 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		std::vector<cm_t> m_cm;
 
 		/* Per-neuron accumulated current from EPSPs */
-		std::vector<wfix_t> mfx_currentE;
 		std::vector<float> m_currentE;
 
 		/* Per-neuron accumulated current from IPSPs */
-		std::vector<wfix_t> mfx_currentI;
 		std::vector<float> m_currentI;
 
 		/* Per-neuron user-provided input current */
@@ -167,8 +163,6 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		void setFiring();
 
 		FiringBuffer m_firingBuffer;
-
-		void deliverSpikesOne(cm_t&, nidx_t source, delay_t delay);
 
 		Timer m_timer;
 

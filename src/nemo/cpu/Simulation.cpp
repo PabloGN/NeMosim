@@ -3,7 +3,6 @@
 #include <cmath>
 
 #include <boost/format.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 
 #ifdef NEMO_CPU_OPENMP_ENABLED
 #include <omp.h>
@@ -11,22 +10,8 @@
 
 #include <nemo/internals.hpp>
 #include <nemo/exception.hpp>
-#include <nemo/bitops.h>
-#include <nemo/fixedpoint.hpp>
 #include <nemo/ConnectivityMatrix.hpp>
 
-#ifdef NEMO_CPU_DEBUG_TRACE
-
-#include <cstdio>
-#include <cstdlib>
-
-#define LOG(...) fprintf(stdout, __VA_ARGS__);
-
-#else
-
-#define LOG(...)
-
-#endif
 
 
 namespace nemo {
@@ -40,10 +25,8 @@ Simulation::Simulation(
 	m_fractionalBits(conf.fractionalBits()),
 	m_fired(m_neuronCount, 0),
 	m_recentFiring(m_neuronCount, 0),
-	mfx_currentE(m_neuronCount, 0U),
 	m_currentE(m_neuronCount, 0.0f),
-	mfx_currentI(m_neuronCount, 0U),
-	m_currentI(m_neuronCount, 0.0),
+	m_currentI(m_neuronCount, 0.0f),
 	m_currentExt(m_neuronCount, 0.0f),
 	m_fstim(m_neuronCount, 0)
 {
@@ -96,6 +79,7 @@ Simulation::fire()
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
 		//! \todo deal with use of the RCM here.
+		//! \todo deal correctly with different accumulators here
 		(*i)->update(
 			m_timer.elapsedSimulation(), getFractionalBits(),
 			&m_currentE[0], &m_currentI[0], &m_currentExt[0],
@@ -268,67 +252,18 @@ Simulation::applyStdp(float reward)
 void
 Simulation::deliverSpikes()
 {
-	/* Ignore spikes outside of max delay. We keep these older spikes as they
-	 * may be needed for STDP */
 	for(std::vector<cm_t>::iterator cm = m_cm.begin();
 			cm != m_cm.end(); ++cm) {
-
-	uint64_t validSpikes = ~(((uint64_t) (~0)) << (*cm)->maxDelay());
-
-	const std::vector<uint64_t> delays = (*cm)->delayBits();
-
-	//! \todo move the whole loop into separate function, then a loadable module
-	for(size_t source=0; source < m_neuronCount; ++source) {
-
-		uint64_t f = m_recentFiring[source] & validSpikes & delays[source];
-
-		int delay = 0;
-		while(f) {
-			int shift = 1 + ctz64(f);
-			delay += shift;
-			f = f >> shift;
-			deliverSpikesOne(*cm, source, delay);
-		}
-	}
-	}
-
-	/* Migrate this to stand-alone function */
-	unsigned fbits = getFractionalBits();
-	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
-#pragma omp parallel for default(shared)
-	for(int n=0; n < ncount; n++) {
-		m_currentE[n] = wfx_toFloat(mfx_currentE[n], fbits);
-		mfx_currentE[n] = 0U;
-#ifndef NEMO_SINGLE_CURRENT
-		m_currentI[n] = wfx_toFloat(mfx_currentI[n], fbits);
-		mfx_currentI[n] = 0U;
-#endif
+		//! \todo deal correctly with multiple accumulators
+		//! \todo collapse these into a single accumulator
+		(*cm)->deliverSpikes(elapsedSimulation(),
+				m_recentFiring,
+				m_currentE,
+				m_currentI);
 	}
 }
 
 
-
-//! \todo move this to CM class
-void
-Simulation::deliverSpikesOne(cm_t& cm, nidx_t source, delay_t delay)
-{
-	const nemo::Row& row = cm->getRow(source, delay);
-
-	for(unsigned s=0; s < row.len; ++s) {
-		const FAxonTerminal& terminal = row[s];
-#ifdef NEMO_SINGLE_CURRENT
-		std::vector<wfix_t>& current = mfx_currentE;
-#else
-		std::vector<wfix_t>& current = terminal.weight >= 0 ? mfx_currentE : mfx_currentI;
-#endif
-		current.at(terminal.target) += terminal.weight;
-		LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
-				elapsedSimulation(),
-				m_mapper.globalIdx(source),
-				m_mapper.globalIdx(terminal.target),
-				fx_toFloat(terminal.weight, getFractionalBits()), delay);
-	}
-}
 
 
 

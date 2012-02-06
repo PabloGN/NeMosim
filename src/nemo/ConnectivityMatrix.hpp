@@ -166,9 +166,21 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/*! \return pointer to reverse connectivity matrix */
 		const runtime::RCM* rcm() const { return &m_rcm; }
 
+		/*! Deliver all spikes currently due
+		 *
+		 * \param cycle current simulation cycle
+		 * \param recentFiring per-neuron bit-vector of recent firing history
+		 */
+		void deliverSpikes(unsigned long cycle,
+				const std::vector<uint64_t>& recentFiring,
+				std::vector<float>& currentE,
+				std::vector<float>& currentI);
+
 	private:
 
 		const mapper_t& m_mapper;
+
+		unsigned m_neuronCount;
 
 		unsigned m_fractionalBits;
 
@@ -228,6 +240,9 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		const AxonTerminalAux& axonTerminalAux(const synapse_id&) const;
 
 		bool m_writeOnlySynapses;
+
+		std::vector<wfix_t> mfx_currentE;
+		std::vector<wfix_t> mfx_currentI;
 };
 
 
