@@ -112,9 +112,13 @@ ConnectivityMatrix::ConnectivityMatrix(
 		racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
 	}
 
-	//! \todo avoid two passes here
-	bool verifySources = true;
-	finalizeForward(mapper, verifySources);
+	{
+		//! \todo avoid two passes here
+		bool verifySources = true;
+		construction::Delays delays;
+		finalizeForward(mapper, verifySources, delays);
+		m_delays.reset(new runtime::Delays(m_neuronCount, delays));
+	}
 	m_rcm = runtime::RCM(racc);
 }
 
@@ -151,10 +155,9 @@ ConnectivityMatrix::addSynapse(
 void
 ConnectivityMatrix::finalizeForward(
 		const mapper_t& mapper,
-		bool verifySources)
+		bool verifySources,
+		construction::Delays& delays)
 {
-	construction::Delays delays;
-
 	if(m_acc.empty()) {
 		return;
 	}
@@ -187,8 +190,6 @@ ConnectivityMatrix::finalizeForward(
 			//! \todo can delete the map now
 		}
 	}
-
-	m_delays.reset(new runtime::Delays(mapper.maxLocalIdx()+1, delays));
 }
 
 
