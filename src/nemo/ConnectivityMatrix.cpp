@@ -90,7 +90,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const mapper_t& mapper,
 		unsigned typeIdx) :
 	m_mapper(mapper),
-	m_neuronCount(mapper.maxGlobalIdx() + 1),
+	m_neuronCount(mapper.maxLocalIdx() + 1),
 	m_fractionalBits(conf.fractionalBits()),
 	m_maxDelay(0),
 	m_writeOnlySynapses(conf.writeOnlySynapses()),
