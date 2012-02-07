@@ -134,8 +134,7 @@ scatterGlobal(unsigned cycle,
 		const param_t& s_params,
 		unsigned* g_lqFill,
 		lq_entry_t* g_lq,
-		outgoing_addr_t* g_outgoingAddr,
-		outgoing_t* g_outgoing,
+		const outgoing_dt& g_outgoing,
 		unsigned* g_gqFill,
 		gq_entry_t* g_gqData)
 {
@@ -181,10 +180,10 @@ scatterGlobal(unsigned cycle,
 			/* Outgoing counts is cachable. It is not too large and is runtime
 			 * constant. It is too large for constant memory however. The
 			 * alternatives are thus texture memory or the L1 cache (on Fermi) */
-			outgoing_addr_t addr = outgoingAddr(neuron, delay0, g_outgoingAddr);
+			outgoing_addr_t addr = outgoingAddr(neuron, delay0, g_outgoing.addr);
 			s_offset[threadIdx.x] = addr.x;
 			s_len[threadIdx.x] = addr.y;
-			ASSERT(s_len[threadIdx.x] <= s_params.outgoingPitch);
+			ASSERT(s_len[threadIdx.x] <= g_outgoing.pitch);
 			DEBUG_MSG_SYNAPSE("c%u[global scatter]: dequeued n%u d%u from local queue (%u warps from %u)\n",
 					cycle, neuron, delay0, s_len[threadIdx.x], s_offset[threadIdx.x]);
 		}
@@ -195,11 +194,11 @@ scatterGlobal(unsigned cycle,
 		 * spread in the range of outgoing row lengths (e.g. one extremely long
 		 * one) will adveresly affect performance here. */
 		unsigned jLqMax = min(THREADS_PER_BLOCK, s_nLq-bLq);
-		for(unsigned jbLq = 0; jbLq < jLqMax; jbLq += s_params.outgoingStep) {
+		for(unsigned jbLq = 0; jbLq < jLqMax; jbLq += g_outgoing.step) {
 
 			/* jLq should be in [0, 256) so that we can point to s_len
 			 * e.g.     0,8,16,24,...,248 + 0,1,...,8 */
-			unsigned jLq = jbLq + threadIdx.x / s_params.outgoingPitch;
+			unsigned jLq = jbLq + threadIdx.x / g_outgoing.pitch;
 			ASSERT(jLq < THREADS_PER_BLOCK);
 
 			/* There may be more than THREADS_PER_BLOCK entries in this
@@ -212,13 +211,13 @@ scatterGlobal(unsigned cycle,
 			__syncthreads();
 
 			/* Load row of outgoing data (specific to neuron/delay pair) */
-			unsigned iOut = threadIdx.x % s_params.outgoingPitch;
+			unsigned iOut = threadIdx.x % g_outgoing.pitch;
 			unsigned targetPartition = 0;
 			unsigned warpOffset = 0;
 			unsigned localOffset = 0;
 			bool valid = bLq + jLq < s_nLq && iOut < nOut;
 			if(valid) {
-				outgoing_t sout = g_outgoing[s_offset[jLq] + iOut];
+				outgoing_t sout = g_outgoing.data[s_offset[jLq] + iOut];
 				targetPartition = outgoingTargetPartition(sout);
 				ASSERT(targetPartition < PARTITION_COUNT);
 				warpOffset = outgoingWarpOffset(sout);
@@ -265,8 +264,7 @@ __global__
 void
 scatter(uint32_t cycle,
 		param_t* g_params,
-		outgoing_addr_t* g_outgoingAddr,
-		outgoing_t* g_outgoing,
+		outgoing_dt g_outgoing,
 		gq_entry_t* g_gqData,      // pitch = c_gqPitch
 		unsigned* g_gqFill,
 		lq_entry_t* g_lqData,      // pitch = c_lqPitch
@@ -291,7 +289,6 @@ scatter(uint32_t cycle,
 	scatterGlobal(cycle,
 			s_params,
 			g_lqFill, g_lqData,
-			g_outgoingAddr,
 			g_outgoing,
 			g_gqFill, g_gqData);
 }
@@ -306,8 +303,7 @@ scatter(cudaStream_t stream,
 		param_t* d_globalParameters,
 		unsigned* d_nFired,
 		nidx_dt* d_fired,
-		outgoing_addr_t* d_outgoingAddr,
-		outgoing_t* d_outgoing,
+		const outgoing_dt& d_outgoing,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill,
 		lq_entry_t* d_lqData,
@@ -322,7 +318,7 @@ scatter(cudaStream_t stream,
 			cycle,
 			d_globalParameters,
 			// spike delivery
-			d_outgoingAddr, d_outgoing,
+			d_outgoing,
 			d_gqData, d_gqFill,
 			d_lqData, d_lqFill, 
 			d_ndData, d_ndFill,

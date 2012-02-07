@@ -372,14 +372,5 @@ ConnectivityMatrix::d_allocated() const
 }
 
 
-
-void
-ConnectivityMatrix::setParameters(param_t* params) const
-{
-	m_outgoing.setParameters(params);
-}
-
-
-
 	} // end namespace cuda
 } // end namespace nemo

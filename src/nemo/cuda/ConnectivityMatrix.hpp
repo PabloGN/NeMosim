@@ -136,15 +136,11 @@ class ConnectivityMatrix
 
 		size_t d_allocated() const;
 
+		/*! \return struct containing all FCM data needed by kernel */
 		const fcm_dt& d_fcm() const { return md_fcm; }
 
-		/*! \return pointer to device data containing outgoing spike data for
-		 * each neuron */
-		outgoing_t* d_outgoing() const { return m_outgoing.d_data(); }
-
-		/*! \return pointer to device data containing the number of outgoing
-		 * spike groups for each neuron */
-		outgoing_addr_t* d_outgoingAddr() const { return m_outgoing.d_addr(); }
+		/*! \return struct containing all Outgoing data needed by kernel */
+		const outgoing_dt& d_outgoing() const { return m_outgoing.d_data(); }
 
 		/*! \copydoc nemo::cuda::GlobalQueue::d_data */
 		gq_entry_t* d_gqData() const { return m_gq.d_data(); }
@@ -160,9 +156,6 @@ class ConnectivityMatrix
 		delay_dt* d_ndData() const { return md_delays->d_data(); }
 
 		unsigned* d_ndFill() const { return md_delays->d_fill(); }
-
-		/*! Fill in all relevant fields in global parameters data structure */
-		void setParameters(param_t*) const;
 
 		/*! \return RCM device pointers */
 		rcm_dt* d_rcm() { return md_rcm.d_rcm(); }

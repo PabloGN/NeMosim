@@ -19,13 +19,10 @@ struct param_t {
 
 	unsigned maxDelay;
 
-	// per-neuron vector pitches
+	/* per-neuron vector pitches */
 	size_t pitch1;
 	size_t pitch32;
 	size_t pitch64;
-
-	size_t outgoingPitch;
-	size_t outgoingStep;
 };
 
 #endif

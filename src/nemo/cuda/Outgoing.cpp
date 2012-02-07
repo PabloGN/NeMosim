@@ -21,7 +21,6 @@
 #include "device_memory.hpp"
 #include "exception.hpp"
 #include "kernel.cu_h"
-#include "parameters.cu_h"
 
 namespace nemo {
 	namespace cuda {
@@ -165,6 +164,8 @@ Outgoing::init(size_t partitionCount, const construction::FcmIndex& index)
 
 	//! \todo compute this on forward pass (in construction::FcmIndex)
 	m_maxIncomingWarps = incoming.size() ? std::max_element(incoming.begin(), incoming.end(), compare_warp_counts)->second : 0;
+
+	md_outgoing = outgoing_dt(md_arr.get(), md_rowLength.get(), m_pitch, m_step);
 }
 
 
@@ -200,16 +201,6 @@ Outgoing::setParameters(unsigned maxWarpsPerNeuronDelay)
 	m_step = THREADS_PER_BLOCK / m_pitch;
 	assert_or_throw(m_step * m_pitch == THREADS_PER_BLOCK, "Invalid outgoing pitch/step");
 }
-
-
-
-void
-Outgoing::setParameters(param_t* params) const
-{
-	params->outgoingPitch = m_pitch;
-	params->outgoingStep = m_step;
-}
-
 
 
 	} // end namespace cuda

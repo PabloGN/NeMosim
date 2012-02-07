@@ -19,6 +19,8 @@
 #include "parameters.cu_h"
 #include "fcm.cu_h"
 #include "rcm.cu_h"
+#include "outgoing.cu_h"
+
 
 /*! Update synapse weight using the accumulated eligibility trace
  *
@@ -69,8 +71,7 @@ scatter(cudaStream_t stream,
 		param_t* d_globalParameters,
 		unsigned* d_nFired,
 		nidx_dt* d_fired,
-		outgoing_addr_t* d_outgoingAddr,
-		outgoing_t* d_outgoing,
+		const outgoing_dt& d_outgoing,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill,
 		lq_entry_t* d_lqData,

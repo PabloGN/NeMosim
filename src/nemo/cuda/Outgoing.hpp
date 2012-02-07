@@ -14,7 +14,6 @@
 
 #include "outgoing.cu_h"
 
-struct param_t;
 
 namespace nemo {
 	namespace cuda {
@@ -55,11 +54,8 @@ class Outgoing
 		/*! Set the device data containing the outgoing spike groups. */
 		Outgoing(size_t partitionCount, const construction::FcmIndex&);
 
-		/*! \return device pointer to the outgoing data */
-		outgoing_t* d_data() const { return md_arr.get(); }
-
-		/*! \return device pointer to address table */
-		outgoing_addr_t* d_addr() const { return md_rowLength.get(); }
+		/*! \return struct with all the outgoing data required by kernel */
+		const outgoing_dt& d_data() const { return md_outgoing; }
 
 		/*! \return bytes of allocated memory */
 		size_t allocated() const { return m_allocated; }
@@ -69,9 +65,6 @@ class Outgoing
 		 * 		This is a worst-case value, which assumes that every source
 		 * 		neuron fires every cycle for some time. */
 		size_t maxIncomingWarps() const { return m_maxIncomingWarps; }
-
-		/*! Fill in the relevant fields of the global parameters struct */
-		void setParameters(param_t*) const;
 
 	private :
 
@@ -86,6 +79,9 @@ class Outgoing
 		 * md_rowLength have fixed-width entries so addressing is
 		 * straightforward (based on a neuron/delay pair) */
 		boost::shared_ptr<outgoing_addr_t> md_rowLength; // per neuron/delay pitch
+
+		/* Struct to pass into kernel, wraps the other data here */
+		outgoing_dt md_outgoing;
 
 		size_t m_allocated; // bytes
 

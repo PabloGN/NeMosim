@@ -305,8 +305,6 @@ Simulation::setParameters(size_t pitch1, size_t pitch32, unsigned maxDelay)
 	params.fixedPointScale = 1 << fbits;
 	params.fixedPointFractionalBits = fbits;
 
-	m_cm.setParameters(&params);
-
 	void* d_ptr;
 	d_malloc(&d_ptr, sizeof(param_t), "Global parameters");
 	md_params = boost::shared_ptr<param_t>(static_cast<param_t*>(d_ptr), d_free);
@@ -395,7 +393,6 @@ Simulation::postfire()
 			md_nFired.get(),
 			m_fired.deviceData(),
 			// outgoing
-			m_cm.d_outgoingAddr(),
 			m_cm.d_outgoing(),
 			m_cm.d_gqData(),
 			m_cm.d_gqFill(),
