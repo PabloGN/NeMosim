@@ -20,6 +20,7 @@
 
 #include <nemo.hpp>
 #include <nemo/fixedpoint.hpp>
+#include <nemo/izhikevich.hpp>
 #include <examples.hpp>
 
 #include "test.hpp"
@@ -137,7 +138,7 @@ runComparisions(nemo::Network* net)
 void
 runSimple(unsigned startNeuron, unsigned neuronCount)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	for(int nidx = 0; nidx < 4; ++nidx) {
 		net.addNeuron(nidx, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f);
 	}
@@ -155,7 +156,7 @@ runSimple(unsigned startNeuron, unsigned neuronCount)
 void
 testNeuronCount(unsigned startNeuron, unsigned step)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	unsigned ncount = 2000U;
 	for(unsigned i = 0; i < ncount; ++i) {
 		unsigned nidx = startNeuron + i * step;
@@ -338,11 +339,13 @@ runDoubleRing(backend_t backend, bool separateSynapseTypes)
 
 	boost::scoped_ptr<nemo::Network> net(new nemo::Network);
 	unsigned synapse0 = net->addSynapseType();
-	unsigned synapse1 =
-		separateSynapseTypes ? net->addSynapseType() : synapse0;
+	unsigned synapse1 = separateSynapseTypes ? net->addSynapseType() : synapse0;
 
-	createRing(net.get(), synapse0, ncount, 0, 1, 1);
-	createRing(net.get(), synapse1, ncount, ncount, 1, 2);
+	unsigned neuron0 = net->addNeuronType("Izhikevich", 1, &synapse0);
+	unsigned neuron1 = net->addNeuronType("Izhikevich", 1, &synapse1);
+
+	createRing(net.get(), neuron0, synapse0, ncount, 0, 1, 1);
+	createRing(net.get(), neuron1, synapse1, ncount, ncount, 1, 2);
 
 	boost::scoped_ptr<nemo::Simulation> sim(nemo::simulation(*net, conf));
 
@@ -380,18 +383,18 @@ void
 testNeuronTypeMixture(backend_t backend, unsigned szOthers, bool izFirst)
 {
 	const unsigned szRing = 1024;
-	boost::scoped_ptr<nemo::Network> net(new nemo::Network());
+	boost::scoped_ptr<nemo::izhikevich::Network> net(new nemo::izhikevich::Network());
 	unsigned synapseType = net->addSynapseType();
 	if(izFirst) {
-		createRing(net.get(), synapseType, szRing);
+		createRing(net.get(), 0U, synapseType, szRing);
 	}
-	unsigned poisson = net->addNeuronType("PoissonSource");
+	unsigned poisson = net->addNeuronType("PoissonSource", 1, &synapseType);
 	float p = 0.001f;
 	for(unsigned n=szRing; n<szRing+szOthers; ++n) {
 		net->addNeuron(poisson, n, 1, &p);
 	}
 	if(!izFirst) {
-		createRing(net.get(), synapseType, szRing);
+		createRing(net.get(), 0U, synapseType, szRing);
 	}
 
 	nemo::Configuration conf = configuration(false, 1024, backend);
@@ -418,16 +421,13 @@ testNeuronTypeMixture(backend_t backend, unsigned szOthers, bool izFirst)
 void
 testFixedPointSaturation(backend_t backend)
 {
-	nemo::Network net;
-
-	unsigned iz = net.addNeuronType("Izhikevich");
+	nemo::izhikevich::Network net;
 
 	enum { INPUT0, INPUT1, OUTPUT_SAT, OUTPUT_REF, OUTPUT_WEAK, NCOUNT };
 
-	float params[7] = { 0.02f, 0.2f, -65.0f, 8.0f, 0.0f, -13.0f, -65.0f }; // RS neurons
-
 	for(unsigned n=0; n < NCOUNT; ++n) {
-		net.addNeuron(iz, n, 7, params);
+		// RS neurons
+		net.addNeuron(n, 0.02f, 0.2f, -65.0f, 8.0f, -13.0f, -65.0f);
 	}
 
 	nemo::Configuration conf = configuration(false, 1024, backend);
@@ -630,7 +630,7 @@ testWriteOnlySynapses(backend_t backend)
 void
 testGetSynapsesFromUnconnectedNeuron(backend_t backend)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	for(int nidx = 0; nidx < 4; ++nidx) {
 		net.addNeuron(nidx, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f);
 	}
@@ -742,7 +742,7 @@ BOOST_AUTO_TEST_SUITE_END()
 void
 testVProbe(backend_t backend)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	float v0 = -65.0;
 	net.addNeuron(0, 0.02f, 0.2f, -65.0f+15.0f*0.25f, 8.0f-6.0f*0.25f, 0.2f*-65.0f, v0, 5.0f);
 
@@ -759,7 +759,8 @@ TEST_ALL_BACKENDS(vprobe, testVProbe)
 BOOST_AUTO_TEST_CASE(add_neuron)
 {
 	nemo::Network net;
-	unsigned iz = net.addNeuronType("Izhikevich");
+	unsigned s = net.addSynapseType();
+	unsigned iz = net.addNeuronType("Izhikevich", 1, &s);
 	std::vector<float> args(7, 0.0f);
 	/* Duplicate neuron indices should report an error */
 	net.addNeuron(iz, 0, args.size(), &args[0]);
@@ -782,7 +783,7 @@ testSetNeuron(backend_t backend)
 	float sigma = 5.0f;
 
 	/* Create a minimal network with a single neuron */
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 
 	/* setNeuron should only succeed for existing neurons */
 	BOOST_REQUIRE_THROW(net.setNeuron(0, a, b, c, d, u, v, sigma), nemo::exception);
@@ -915,7 +916,8 @@ testSetNeuron(backend_t backend)
 		 * fires (which it shouldn't do this cycle). This modification
 		 * therefore should not affect the simulation result (here measured via
 		 * the membrane potential) */
-		sim->setNeuron(0, a, b, c+1.0f, d, u, v, sigma);
+		float args[7] = {a, b, c+1.0f, d, sigma, u, v};
+		sim->setNeuron(0, 7, args);
 
 		sim->step();
 
@@ -931,7 +933,7 @@ testSetNeuron(backend_t backend)
 	{
 		/* Ensure that when setting the state variable, it is not copied
 		 * multiple times */
-		nemo::Network net0;
+		nemo::izhikevich::Network net0;
 		net0.addNeuron(0, a, b, c, d, u, v, 0.0f);
 
 		boost::scoped_ptr<nemo::Simulation> sim0(simulation(net0, conf));
@@ -941,7 +943,8 @@ testSetNeuron(backend_t backend)
 
 		boost::scoped_ptr<nemo::Simulation> sim1(simulation(net0, conf));
 		sim1->step();
-		sim1->setNeuron(0, a, b, c, d, u, v, 0.0f);
+		float args[7] = {a, b, c, d, 0.0f, u, v};
+		sim1->setNeuron(0, 7, args);
 		sim1->step();
 		sim1->step();
 		float v1 = sim1->getMembranePotential(0);
@@ -952,10 +955,11 @@ testSetNeuron(backend_t backend)
 	{
 		/* Modify membrane potential after simulation has been created.
 		 * Again the result should be the same */
-		nemo::Network net1;
+		nemo::izhikevich::Network net1;
 		net1.addNeuron(0, a, b, c, d, u, v-1.0f, sigma);
 		boost::scoped_ptr<nemo::Simulation> sim(simulation(net1, conf));
-		sim->setNeuron(0, a, b, c, d, u, v, sigma);
+		float args[7] = {a, b, c, d, sigma, u, v};
+		sim->setNeuron(0, 7, args);
 		BOOST_REQUIRE_EQUAL(v, sim->getMembranePotential(0));
 		sim->step();
 		BOOST_REQUIRE_EQUAL(v0, sim->getMembranePotential(0));
@@ -971,7 +975,8 @@ void
 testInvalidNeuronType()
 {
 	nemo::Network net;
-	unsigned iz = net.addNeuronType("Izhikevich");
+	unsigned s = net.addSynapseType();
+	unsigned iz = net.addNeuronType("Izhikevich", 1, &s);
 	float args[7] = {0, 0, 0, 0, 0, 0, 0};
 	for(unsigned n=0; n<100; ++n) {
 		if(n != iz) {
@@ -987,7 +992,8 @@ void
 testNoParamNeuronType()
 {
 	nemo::Network net;
-	unsigned rs = net.addNeuronType("IzhikevichRS");
+	unsigned s = net.addSynapseType();
+	unsigned rs = net.addNeuronType("IzhikevichRS", 1, &s);
 	float params[2] = { -13.0f, -65.0f };
 	for(unsigned n=0; n<1000; ++n) {
 		net.addNeuron(rs, n, 2, params);
@@ -1020,6 +1026,8 @@ BOOST_AUTO_TEST_SUITE(regression)
 BOOST_AUTO_TEST_SUITE_END()
 
 
+#warning "C tests not included"
+#if 0
 BOOST_AUTO_TEST_SUITE(c_api)
 
 	BOOST_AUTO_TEST_SUITE(comparison)
@@ -1037,6 +1045,7 @@ BOOST_AUTO_TEST_SUITE(c_api)
 	BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 
 BOOST_AUTO_TEST_SUITE(neuron_types)

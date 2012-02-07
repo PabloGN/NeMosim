@@ -6,13 +6,13 @@ namespace nemo {
 void
 testRate(backend_t backend, unsigned duration, bool otherNeurons)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	nemo::Configuration conf = configuration(false, 1024, backend);
 	if(otherNeurons) {
 		/* This population will never fire */
-		createRing(&net, 1024, 1);
+		createRing(&net, 0U, 1024, 1);
 	}
-	unsigned poisson = net.addNeuronType("PoissonSource");
+	unsigned poisson = net.addNeuronType("PoissonSource", 0, NULL);
 	float rate = 0.010f;
 	net.addNeuron(poisson, 0, 1, &rate);
 	boost::scoped_ptr<nemo::Simulation> sim(nemo::simulation(net, conf));

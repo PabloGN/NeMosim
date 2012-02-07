@@ -21,7 +21,7 @@ ADD_EXECUTABLE(test
 	utils.cpp
 	networks.cpp
 	rtest.cpp
-	c_api.cpp
+	# c_api.cpp
 	${EXAMPLES_DIR}/kuramoto.cpp
 	${EXAMPLES_DIR}/torus.cpp
 	${EXAMPLES_DIR}/random.cpp)

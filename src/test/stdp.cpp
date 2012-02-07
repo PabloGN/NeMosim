@@ -15,6 +15,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <nemo.hpp>
+#include <nemo/izhikevich.hpp>
 #include "utils.hpp"
 
 /* The test network consists of two groups of the same size. Connections
@@ -123,7 +124,7 @@ delay(unsigned local)
 
 /* Return number of synapses per neuron */
 unsigned
-construct(nemo::Network& net, bool noiseConnections)
+construct(nemo::izhikevich::Network& net, bool noiseConnections)
 {
 	/* Neurons in the two groups have standard parameters and no spontaneous
 	 * firing */
@@ -242,7 +243,7 @@ verifyWeightChange(unsigned epoch, nemo::Simulation* sim, unsigned m, float rewa
 void
 testStdp(backend_t backend, bool noiseConnections, float reward)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	unsigned m = construct(net, noiseConnections);
 	nemo::Configuration conf = configuration(backend);
 
@@ -338,11 +339,10 @@ testInvalidDynamicLength(bool stdp)
 		conf.setStdpFunction(pre, post, 0.01f,  1.0f, -0.01f, -1.0f);
 	}
 
-	nemo::Network net;
-	unsigned iz = net.addNeuronType("Izhikevich");
+	nemo::izhikevich::Network net;
 	float param[7] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-	net.addNeuron(iz, 0, 7, param);
-	net.addNeuron(iz, 1, 7, param);
+	net.addNeuron(0, 7, param);
+	net.addNeuron(1, 7, param);
 	net.addSynapse(0U, 1U, 34U, 1.0f, stdp);
 
 	boost::scoped_ptr<nemo::Simulation> sim;

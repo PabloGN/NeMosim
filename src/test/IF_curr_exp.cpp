@@ -16,7 +16,8 @@ void
 create(backend_t backend, unsigned duration, Types ntypes)
 {
 	Network net;
-	const unsigned IF_curr_exp = net.addNeuronType("IF_curr_exp");
+	const unsigned synapse = net.addSynapseType();
+	const unsigned IF_curr_exp = net.addNeuronType("IF_curr_exp", 1, &synapse);
 
 	const float v_rest = -65.0f;
 	const float args[13] = {
@@ -26,8 +27,9 @@ create(backend_t backend, unsigned duration, Types ntypes)
 	net.addNeuron(IF_curr_exp, 0, 13, args);
 
 	if(ntypes == MULTIPLE) {
+		unsigned iz = net.addNeuronType("Izhikevich", 1, &synapse);
 		/* This population will never fire */
-		createRing(&net, 1024, 1);
+		createRing(&net, iz, 1024, 1);
 	}
 
 	Configuration conf = configuration(false, 1024, backend);
