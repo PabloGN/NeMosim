@@ -42,9 +42,9 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const Mapper& mapper) :
 	m_mapper(mapper),
 	m_maxDelay(0),
-	mhf_weights(WARP_SIZE, 0),
 	md_fcmPlaneSize(0),
 	md_fcmAllocated(0),
+	mhf_weights(WARP_SIZE, 0),
 	m_fractionalBits(conf.fractionalBits()),
 	m_writeOnlySynapses(conf.writeOnlySynapses())
 {
@@ -202,13 +202,14 @@ ConnectivityMatrix::moveFcmToDevice(size_t totalWarps,
 	md_fcmPlaneSize = totalWarps * WARP_SIZE;
 	size_t bytes = md_fcmPlaneSize * 2 * sizeof(synapse_t);
 
-	void* d_fcm;
-	d_malloc(&d_fcm, bytes, "fcm");
-	md_fcm = boost::shared_ptr<synapse_t>(static_cast<synapse_t*>(d_fcm), d_free);
+	void* d_fcmData;
+	d_malloc(&d_fcmData, bytes, "fcm");
+	md_fcmData = boost::shared_ptr<synapse_t>(static_cast<synapse_t*>(d_fcmData), d_free);
+	md_fcm = fcm_dt(md_fcmData.get(), md_fcmPlaneSize);
 	md_fcmAllocated = bytes;
 
-	memcpyToDevice(md_fcm.get() + md_fcmPlaneSize * FCM_ADDRESS, h_targets, md_fcmPlaneSize);
-	memcpyToDevice(md_fcm.get() + md_fcmPlaneSize * FCM_WEIGHT,
+	memcpyToDevice(md_fcmData.get() + md_fcmPlaneSize * FCM_ADDRESS, h_targets, md_fcmPlaneSize);
+	memcpyToDevice(md_fcmData.get() + md_fcmPlaneSize * FCM_WEIGHT,
 			reinterpret_cast<const synapse_t*>(&h_weights[0]), md_fcmPlaneSize);
 }
 
@@ -292,7 +293,7 @@ ConnectivityMatrix::syncWeights(cycle_t cycle) const
 	if(cycle != m_lastWeightSync && !mhf_weights.empty()) {
 		//! \todo refine this by only doing the minimal amount of copying
 		memcpyFromDevice(reinterpret_cast<synapse_t*>(&mhf_weights[0]),
-					md_fcm.get() + FCM_WEIGHT * md_fcmPlaneSize,
+					md_fcmData.get() + FCM_WEIGHT * md_fcmPlaneSize,
 					md_fcmPlaneSize);
 		m_lastWeightSync = cycle;
 	}
@@ -376,7 +377,6 @@ void
 ConnectivityMatrix::setParameters(param_t* params) const
 {
 	m_outgoing.setParameters(params);
-	params->fcmPlaneSize = md_fcmPlaneSize;
 }
 
 

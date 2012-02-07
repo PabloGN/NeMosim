@@ -19,4 +19,19 @@
 
 const synapse_t INVALID_FORWARD_SYNAPSE = 0;
 
+struct fcm_dt {
+
+	fcm_dt() : data(0), planeSize(0) { }
+
+	fcm_dt(synapse_t data[], size_t planeSize) :
+		data(data), planeSize(planeSize) { }
+
+	synapse_t* data;
+
+	/* Size (in words) of a single plane in the forward connectivity matrix,
+	 * i.e. all of the address data or all of the weights */
+	size_t planeSize;
+
+};
+
 #endif

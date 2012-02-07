@@ -17,6 +17,7 @@
 #include "localQueue.cu_h"
 #include "types.h"
 #include "parameters.cu_h"
+#include "fcm.cu_h"
 #include "rcm.cu_h"
 
 /*! Update synapse weight using the accumulated eligibility trace
@@ -39,7 +40,7 @@ applyStdp(
 		unsigned* d_partitionSize,
 		unsigned fractionalBits,
 		param_t* d_params,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		rcm_dt* d_rcm,
 		float minExcitatoryWeight,
 		float maxExcitatoryWeight,
@@ -55,7 +56,7 @@ gather( cudaStream_t stream,
 		unsigned* d_partitionSize,
 		param_t* d_globalParameters,
 		float* d_current,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill);
 

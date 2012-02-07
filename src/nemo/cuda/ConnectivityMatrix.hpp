@@ -28,6 +28,7 @@
 
 #include "types.h"
 #include "kernel.cu_h"
+#include "fcm.cu_h"
 #include "Mapper.hpp"
 #include "Outgoing.hpp"
 #include "GlobalQueue.hpp"
@@ -135,7 +136,7 @@ class ConnectivityMatrix
 
 		size_t d_allocated() const;
 
-		synapse_t* d_fcm() const { return md_fcm.get(); }
+		const fcm_dt& d_fcm() const { return md_fcm; }
 
 		/*! \return pointer to device data containing outgoing spike data for
 		 * each neuron */
@@ -173,7 +174,10 @@ class ConnectivityMatrix
 		delay_t m_maxDelay;
 
 		/*! Compact forward connectivity matrix on device */
-		boost::shared_ptr<synapse_t> md_fcm;
+		size_t md_fcmPlaneSize; // in words
+		size_t md_fcmAllocated; // in bytes
+		boost::shared_ptr<synapse_t> md_fcmData;
+		fcm_dt md_fcm;
 
 		/*! Compact reverse connectivity matrix on device */
 		runtime::RCM md_rcm;
@@ -187,8 +191,6 @@ class ConnectivityMatrix
 		const std::vector<weight_dt>& syncWeights(cycle_t) const;
 		mutable cycle_t m_lastWeightSync;
 
-		size_t md_fcmPlaneSize; // in words
-		size_t md_fcmAllocated; // in bytes
 
 		void moveFcmToDevice(size_t totalWarps,
 				const std::vector<synapse_t>& h_targets,

@@ -12,6 +12,7 @@
 #include "types.h"
 
 #include "log.cu_h"
+#include "fcm.cu_h"
 
 #include "bitvector.cu"
 #include "double_buffer.cu"
@@ -28,7 +29,7 @@
  *
  * \param[in] cycle
  * 		Current cycle
- * \param[in] g_fcm
+ * \param[in] fcm
  *		Forward connectivity matrix in global memory
  * \param[in] g_gqFill
  *		Fill rate for global queue
@@ -41,7 +42,7 @@ __device__
 void
 gather( unsigned cycle,
 		const param_t& s_params,
-		synapse_t* g_fcm,
+		fcm_dt& fcm,
 		gq_entry_t* g_gqData,
 		unsigned* g_gqFill,
 		float sf_currentE[],
@@ -95,7 +96,7 @@ gather( unsigned cycle,
 
 		if(threadIdx.x < s_groupSize) {
 			gq_entry_t sgin = gq_read(readBuffer(cycle), group, g_gqData);
-			s_warpAddress[threadIdx.x] = g_fcm + gq_warpOffset(sgin) * WARP_SIZE;
+			s_warpAddress[threadIdx.x] = fcm.data + gq_warpOffset(sgin) * WARP_SIZE;
 			DEBUG_MSG_SYNAPSE("c%u w%u -> p%u\n", cycle, gq_warpOffset(sgin), CURRENT_PARTITION);
 		}
 
@@ -115,7 +116,7 @@ gather( unsigned cycle,
 			if(gwarp < s_groupSize) {
 				postsynaptic = *base;
 				ASSERT(postsynaptic < MAX_PARTITION_SIZE);
-				weight = *((unsigned*)base + s_params.fcmPlaneSize);
+				weight = *((unsigned*)base + fcm.planeSize);
 			}
 
 #ifdef NEMO_SINGLE_CURRENT
@@ -135,7 +136,7 @@ gather( unsigned cycle,
 #endif
 				DEBUG_MSG_SYNAPSE("c%u p?n? -> p%un%u %+f [warp %u]\n",
 						s_cycle, CURRENT_PARTITION, postsynaptic,
-						fx_tofloat(weight), (s_warpAddress[gwarp] - g_fcm) / WARP_SIZE);
+						fx_tofloat(weight), (s_warpAddress[gwarp] - fcm.data) / WARP_SIZE);
 			}
 		}
 		__syncthreads(); // to avoid overwriting s_groupSize
@@ -156,7 +157,7 @@ void
 gather( uint32_t cycle,
 		unsigned* g_partitionSize,
 		param_t* g_params,
-		synapse_t* g_fcm,
+		fcm_dt fcm,
 		gq_entry_t* g_gqData,      // pitch = c_gqPitch
 		unsigned* g_gqFill,
 		float* g_current)
@@ -177,7 +178,7 @@ gather( uint32_t cycle,
 	} // sync done in loadParameters
 	loadParameters(g_params, &s_params);
 
-	gather(cycle, s_params, g_fcm, g_gqData, g_gqFill, s_currentE, s_currentI);
+	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_currentE, s_currentI);
 
 	/* Write back to global memory The global memory roundtrip is so that the
 	 * gather and fire steps can be done in separate kernel invocations. */
@@ -202,7 +203,7 @@ gather( cudaStream_t stream,
 		unsigned* d_partitionSize,
 		param_t* d_params,
 		float* d_current,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill)
 {
