@@ -211,7 +211,7 @@ testFiringStimulus(backend_t backend)
 	unsigned firing = 10;   // every cycle
 	double p_fire = double(firing) / double(ncount);
 
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	for(unsigned nidx = 0; nidx < ncount; ++nidx) {
 		addExcitatoryNeuron(nidx, net);
 	}

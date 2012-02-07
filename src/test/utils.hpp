@@ -2,6 +2,7 @@
 #define NEMO_TEST_UTILS_HPP
 
 #include <nemo.hpp>
+#include <nemo/izhikevich.hpp>
 
 /* Run simulation for given length and return result in output vector */
 void
@@ -42,7 +43,7 @@ configuration(bool stdp, unsigned partitionSize,
  * \pre network is purely Izhikevich neuron and the neuron type index is zero
  * */
 void
-addExcitatoryNeuron(unsigned nidx, nemo::Network& net, float sigma=0.0f);
+addExcitatoryNeuron(unsigned nidx, nemo::izhikevich::Network& net, float sigma=0.0f);
 
 
 

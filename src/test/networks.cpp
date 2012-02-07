@@ -47,7 +47,7 @@ runOne( backend_t backend,
 	assert(firstUnconnected <= lastUnconnected);
 	assert(lastUnconnected <= ncount);
 
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 
 	for(unsigned i=0; i < ncount; ++i) {
 		unsigned source = neuronIndex(i, contigous);
@@ -102,7 +102,7 @@ run(backend_t backend)
 	unsigned ncount = 100;
 	bool stdp = false;
 
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 
 	for(unsigned source=0; source < ncount; ++source) {
 		addExcitatoryNeuron(source, net);

@@ -105,14 +105,13 @@ configuration(bool stdp, unsigned partitionSize, backend_t backend)
 
 
 void
-addExcitatoryNeuron(unsigned nidx, nemo::Network& net, float sigma)
+addExcitatoryNeuron(unsigned nidx, nemo::izhikevich::Network& net, float sigma)
 {
 	float r = 0.5;
 	float b = 0.25f - 0.05f * r;
 	float v = -65.0;
 	float args[7] = {0.02f + 0.08f * r, b, v, 2.0f, sigma, b*v, v};
-	unsigned ntype = 0U;
-	net.addNeuron(ntype, nidx, 7, args);
+	net.addNeuron(nidx, 7, args);
 }
 
 
