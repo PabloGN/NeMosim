@@ -1,7 +1,5 @@
 #include "Simulation.hpp"
 
-#include <cmath>
-
 #include <boost/format.hpp>
 
 #ifdef NEMO_CPU_OPENMP_ENABLED
@@ -58,6 +56,16 @@ Simulation::Simulation(
 		m_accumulator.push_back(std::vector<float>(m_neuronCount, 0.0f));
 	}
 
+	for(unsigned n=0, n_end=net.neuronTypeCount(); n < n_end; ++n) {
+		std::vector<float*> ptrs;
+		const std::vector<unsigned>& inputs = net.neuronInputs(n);
+		for(std::vector<unsigned>::const_iterator i = inputs.begin();
+				i != inputs.end(); ++i) {
+			ptrs.push_back(&m_accumulator[*i][0]);
+		}
+		m_accumulatorPointers.push_back(ptrs);
+	}
+
 	resetTimer();
 }
 
@@ -76,18 +84,14 @@ Simulation::fire()
 {
 	deliverSpikes();
 
-	for(neuron_groups::const_iterator i = m_neurons.begin();
-			i != m_neurons.end(); ++i) {
-
-		/* Each neuron model plugin expects a certain number of accumulators */
-		//! \todo deal with multiple accumulators here
-		std::vector<float*> accumulators(1U, NULL);
-		accumulators.at(0) = &(m_accumulator.front()[0]);
+	unsigned ngIdx = 0;
+	for(neuron_groups::const_iterator ng = m_neurons.begin();
+			ng != m_neurons.end(); ++ng, ++ngIdx) {
 
 		//! \todo deal with use of the RCM here.
-		(*i)->update(
+		(*ng)->update(
 			m_timer.elapsedSimulation(), getFractionalBits(),
-			&accumulators[0],
+			&m_accumulatorPointers[ngIdx][0],
 			&m_currentExt[0],
 			&m_fstim[0], &m_recentFiring[0], &m_fired[0],
 			NULL

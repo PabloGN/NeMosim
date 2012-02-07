@@ -29,7 +29,9 @@ namespace nemo {
 
 	namespace cpu {
 
-class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
+class NEMO_CPU_DLL_PUBLIC Simulation :
+	public nemo::SimulationBackend,
+	public boost::noncopyable
 {
 	public:
 
@@ -140,6 +142,14 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		/*! Per-neuron accumulators for different synapse types */
 		std::vector< std::vector<float> > m_accumulator;
+
+		/*! Mapping from neuron type to the set of accumulators used by that
+		 * neuron type. Each entry in \a m_accumulatorPointers points to an
+		 * entry (i.e. the contents of a whole vector) in \a m_accumulator.
+		 *
+		 * The use of pointers relies on the sim object not being moved.
+		 */
+		std::vector< std::vector<float*> > m_accumulatorPointers;
 
 		/* Per-neuron user-provided input current */
 		std::vector<float> m_currentExt;
