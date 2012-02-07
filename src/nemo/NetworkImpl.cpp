@@ -42,35 +42,28 @@ NetworkImpl::addNeuronType(
 {
 	using boost::format;
 
-	if(m_typeIds.find(name) == m_typeIds.end()) {
-
-		for(unsigned s=0; s < nInputs; ++s) {
-			if(inputs[s] >= m_synapses.size()) {
-				throw nemo::exception(NEMO_INVALID_INPUT,
-						str(format("Invalid synapse id (%u) used as input to neuron type %s")
-							% inputs[s] % name));
-			}
-		}
-
-		unsigned type_id = m_neurons.size();
-		m_neurons.push_back(Neurons(
-					NeuronType(name, nInputs),
-					std::vector<unsigned>(inputs, inputs+nInputs)));
-		m_typeIds[name] = type_id;
-		return type_id;
-	} else {
-
-		unsigned idx = m_typeIds[name];
-		const std::vector<unsigned>& ns = m_neurons[idx].inputs();
-
-		if(!std::equal(ns.begin(), ns.end(), inputs)) {
+	for(unsigned s=0; s < nInputs; ++s) {
+		if(inputs[s] >= m_synapses.size()) {
 			throw nemo::exception(NEMO_INVALID_INPUT,
-					str(format("Neuron type %s added multiple times with different inputs") % name));
+					str(format("Invalid synapse id (%u) used as input to neuron type %s")
+						% inputs[s] % name));
 		}
-		//! \todo deprecate creating the same type multiple times
-
-		return idx;
 	}
+
+	unsigned type_id = m_neurons.size();
+
+	if(type_id > 1000) {
+		/* There's no reason why in principle it shouldn't work to have an
+		 * arbitrary number of neurons. However, a very large number of neurons
+		 * is indicative of a user error where the neuron type is added once
+		 * for each neuron */
+		throw nemo::exception(NEMO_INVALID_INPUT, "Only 1000 neuron types supported");
+	}
+
+	m_neurons.push_back(Neurons(
+				NeuronType(name, nInputs),
+				std::vector<unsigned>(inputs, inputs+nInputs)));
+	return type_id;
 }
 
 
