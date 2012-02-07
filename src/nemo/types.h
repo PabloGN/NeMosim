@@ -58,7 +58,11 @@ typedef unsigned __int64 uint64_t;
 #define NEMO_DL_ERROR 12
 
 #define NEMO_IO_ERROR 13
-#define NEMO_UNKNOWN_ERROR 14
+
+/*! Non-fatal errors that could in principle be warnings */
+#define NEMO_WARNING 14
+
+#define NEMO_UNKNOWN_ERROR 15
 
 enum {
 	NEMO_BACKEND_CUDA,

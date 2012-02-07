@@ -4,6 +4,7 @@
 
 #include <nemo/config.h>
 
+#include <boost/format.hpp>
 #ifdef NEMO_CUDA_ENABLED
 #ifdef NEMO_CUDA_DYNAMIC_LOADING
 #include <boost/scoped_ptr.hpp>
@@ -103,6 +104,42 @@ cudaSimulation(const network::Generator& net, const ConfigurationImpl& conf)
 #endif
 
 
+
+/* Check that all synapse types target at least one neuron type
+ *
+ * The API does not prevent the user from creating synapses that has a type
+ * that does not provide input to any neurons. This is likely to be an error,
+ * so we throw.
+ *
+ * \todo support user-configuration of warnings, as this may be intended.
+ */
+void
+verifySynapseTypesHaveTargets(const network::Generator& net)
+{
+	using boost::format;
+
+	typedef unsigned neuron_type;
+	typedef std::map<synapse_type, std::set<neuron_type> > targets_t;
+	targets_t targets;
+	for(unsigned n = 0; n < net.neuronTypeCount(); ++n) {
+		if(net.neuronCount(n) > 0) {
+			const std::vector<synapse_type> inputs = net.neuronInputs(n);
+			for(std::vector<synapse_type>::const_iterator s = inputs.begin();
+					s != inputs.end(); ++s) {
+				targets[*s].insert(n);
+			}
+		}
+	}
+
+	for(unsigned s = 0; s < net.synapseTypeCount(); ++s) {
+		if(targets[s].empty()) {
+			throw nemo::exception(NEMO_WARNING,
+					str(format("Synapse type %u does not target any neurons") % s));
+		}
+	}
+}
+
+
 /* Sometimes using the slightly lower-level interface provided by NetworkImpl
  * makes sense (see e.g. nemo::mpi::Worker), so provide an overload of 'create'
  * that takes such an object directly. */
@@ -116,6 +153,7 @@ simulationBackend(const network::Generator& net, const ConfigurationImpl& conf)
 	}
 
 	conf.verifyStdp(net.maxDelay());
+	verifySynapseTypesHaveTargets(net);
 
 	switch(conf.backend()) {
 #ifdef NEMO_CUDA_ENABLED
