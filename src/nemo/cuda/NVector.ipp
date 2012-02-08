@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cassert>
 
 #include "exception.hpp"
 #include "device_memory.hpp"
@@ -56,6 +55,16 @@ T*
 NVector<T>::deviceData() const
 {
 	return m_deviceData.get();
+}
+
+
+
+template<typename T>
+T*
+NVector<T>::deviceData(size_t plane) const
+{
+	assert_or_throw(plane < m_planes, "Invalid subvector index");
+	return m_deviceData.get() + plane * size();
 }
 
 
@@ -141,10 +150,9 @@ template<typename T>
 size_t
 NVector<T>::offset(size_t subvector, size_t partitionIdx, size_t neuronIdx) const
 {
-	//! \todo throw exception if incorrect size is used
-	assert(subvector < m_planes);
-	assert(partitionIdx < m_partitionCount);
-	assert(neuronIdx < m_pitch);
+	assert_or_throw(subvector < m_planes, "Invalid subvector index");
+	assert_or_throw(partitionIdx < m_partitionCount, "Invalid partition index");
+	assert_or_throw(neuronIdx < m_pitch, "Invalid neuron index");
 	return (subvector * m_partitionCount + partitionIdx) * m_pitch + neuronIdx;
 }
 

@@ -66,6 +66,9 @@ class NVector
 		/*! \return pointer to device data */
 		T* deviceData() const;
 
+		/*! \return pointer to device data for a single plane */
+		T* deviceData(size_t plane) const;
+
 		/*! \return number of words of data in each subvector, including padding */
 		size_t size() const;
 
@@ -104,7 +107,7 @@ class NVector
 
 		T getNeuron(size_t partitionIdx, size_t neuronIdx, size_t subvector=0) const;
 
-		/*! Fill all entries in a single plane with the same value */
+		/*! Fill all entries in a single subvector with the same value */
 		void fill(const T& val, size_t subvector=0);
 
 		/*! Replicate the first \a n planes to fill the host-side data */

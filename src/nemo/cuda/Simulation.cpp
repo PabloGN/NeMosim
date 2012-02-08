@@ -352,15 +352,15 @@ Simulation::prefire()
 {
 	initLog();
 
-	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm) {
+	unsigned i = 0;
+	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm, ++i) {
 		runKernel(::gather(
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
 				md_partitionSize.get(),
 				md_params.get(),
-				//! \todo provide output to a specific subvector
-				m_current.deviceData(),
+				m_current.deviceData(i),
 				(*cm)->d_fcm(),
 				(*cm)->d_gqData(),
 				(*cm)->d_gqFill()));
