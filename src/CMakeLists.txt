@@ -13,16 +13,6 @@ CMAKE_POLICY(SET CMP0015 NEW)
 # root of the build
 LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/src/nemo/cuda)
 
-OPTION(NEMO_CUDA_ENABLED "Enabled simulation on CUDA devices" ON)
-
-IF(NEMO_CUDA_ENABLED)
-	OPTION(NEMO_CUDA_DYNAMIC_LOADING "Load the CUDA backend dynamically" ON)
-	SET(NEMO_CUDA_DEBUG_TRACE "" CACHE STRING "Mask indicating what events to show in trace log. Or the following: 0x2 (neuron), 0x4 (synapse) 0x8 (stdp)")
-	OPTION(NEMO_CUDA_DEVICE_ASSERTIONS "Enable assertions in device code" OFF)
-ELSE(NEMO_CUDA_ENABLED)
-	SET(NEMO_CUDA_DYNAMIC_LOADING OFF)
-ENDIF(NEMO_CUDA_ENABLED)
-
 LIST(APPEND BOOST_COMPONENTS date_time filesystem program_options system)
 
 # TODO: move MPI-related libraries to mpi directory

@@ -21,6 +21,8 @@ ENDIF()
 
 LIST(APPEND CUDA_NVCC_FLAGS "-arch=sm_${NEMO_CUDA_DEVICE_MAJOR}${NEMO_CUDA_DEVICE_MINOR}")
 
+SET(NEMO_CUDA_DEBUG_TRACE "" CACHE STRING "Mask indicating what events to show in trace log. Or the following: 0x2 (neuron), 0x4 (synapse) 0x8 (stdp)")
+OPTION(NEMO_CUDA_DEVICE_ASSERTIONS "Enable assertions in device code" OFF)
 
 IF(NEMO_CUDA_DEBUG_TRACE)
 	IF(NOT CUDA_BUILD_EMULATION AND NEMO_CUDA_DEVICE_MAJOR LESS 2)
