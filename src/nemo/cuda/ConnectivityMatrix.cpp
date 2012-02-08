@@ -39,7 +39,8 @@ namespace nemo {
 ConnectivityMatrix::ConnectivityMatrix(
 		const nemo::network::Generator& net,
 		const nemo::ConfigurationImpl& conf,
-		const Mapper& mapper) :
+		const Mapper& mapper,
+		const synapse_type& typeIdx) :
 	m_mapper(mapper),
 	m_maxDelay(0),
 	md_fcmPlaneSize(0),
@@ -67,8 +68,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 	 * needed, though, due the organisation in warp-sized chunks. */
 
 	size_t nextFreeWarp = 1; // leave space for null warp at beginning
-	for(network::synapse_iterator si = net.synapse_begin(0);
-			si != net.synapse_end(0); ++si) {
+	for(network::synapse_iterator si = net.synapse_begin(typeIdx);
+			si != net.synapse_end(typeIdx); ++si) {
 		const Synapse& s = *si;
 		setMaxDelay(s);
 		DeviceIdx source = mapper.deviceIdx(s.source);

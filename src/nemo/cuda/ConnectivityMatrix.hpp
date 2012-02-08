@@ -109,7 +109,8 @@ class ConnectivityMatrix
 		ConnectivityMatrix(
 				const nemo::network::Generator&,
 				const nemo::ConfigurationImpl&,
-				const Mapper&);
+				const Mapper&,
+				const synapse_type& typeIdx);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
@@ -147,9 +148,6 @@ class ConnectivityMatrix
 
 		/*! \copydoc nemo::cuda::GlobalQueue::d_fill */
 		unsigned* d_gqFill() const { return m_gq.d_fill(); }
-
-		/*! \return number of fractional bits used for weights. */
-		unsigned fractionalBits() const { return m_fractionalBits; }
 
 		void printMemoryUsage(std::ostream&) const;
 

@@ -306,7 +306,8 @@ class Simulation : public nemo::SimulationBackend
 		typedef std::vector< boost::shared_ptr<Neurons> > neuron_groups;
 		neuron_groups m_neurons;
 
-		ConnectivityMatrix m_cm;
+		typedef boost::shared_ptr<ConnectivityMatrix> cm_t;
+		std::vector<cm_t> m_cm;
 
 		LocalQueue m_lq;
 
@@ -314,7 +315,6 @@ class Simulation : public nemo::SimulationBackend
 
 		FiringStimulus m_firingStimulus;
 
-		// const unsigned m_currentVars;     // number of output variables
 		NVector<float> m_currentStimulus; // user-provided
 		NVector<float> m_current;         // driven by simulation
 
@@ -342,7 +342,9 @@ class Simulation : public nemo::SimulationBackend
 		 * \return device pointer to parameters. The device memory is handled
 		 * 		by this class rather than the caller.
 		 */
-		param_t* setParameters(size_t pitch1, size_t pitch32, unsigned maxDelay);
+		param_t* setParameters(
+				const nemo::ConfigurationImpl& conf,
+				size_t pitch1, size_t pitch32, unsigned maxDelay);
 
 		/* Size of each partition, stored on the device in a single array. */
 		boost::shared_array<unsigned> md_partitionSize;
@@ -351,7 +353,9 @@ class Simulation : public nemo::SimulationBackend
 
 		boost::optional<StdpFunction> m_stdp;
 
+#ifdef NEMO_STDP_ENABLED
 		void configureStdp();
+#endif
 
 		Timer m_timer;
 
