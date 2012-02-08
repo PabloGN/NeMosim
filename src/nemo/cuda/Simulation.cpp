@@ -177,7 +177,7 @@ Simulation::Simulation(
 
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
-		runKernel((*i)->initHistory(
+		runKernel((*i)->init(
 				m_mapper.partitionCount(),
 				d_params,
 				md_partitionSize.get()));

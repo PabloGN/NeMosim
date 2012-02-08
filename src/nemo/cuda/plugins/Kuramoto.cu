@@ -372,7 +372,9 @@ cuda_init_neurons(
 		float* df_neuronParameters,
 		float* df_neuronState,
 		nrng_t /* rng */,
-		uint32_t* d_valid)
+		uint32_t* d_valid,
+		size_t nInputs,
+		unsigned inputs[])
 {
 	dim3 dimBlock(THREADS_PER_BLOCK);
 	dim3 dimGrid(localPartitionCount);

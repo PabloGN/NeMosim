@@ -44,11 +44,17 @@ typedef cudaError_t cuda_update_neurons_t(
 		rcm_dt* d_rcm);
 
 
-/*! Initialise all neurons in the network
+/*! Initialise neuron plugin and the neurons in the network
  *
- * For neuron types which requires some state history this may be required,
- * whereas for types which only stores the current value, this step is
- * redundant.
+ * \param nInputs
+ * 		Number of valid entries in \a h_inputs
+ * \param h_inputs
+ * 		Array of indices of the accumulators used by this model. These are
+ * 		typically loaded into constant memory.
+ *
+ * default_init.c contains a suitable method to use for new neuron models.
+ * The writer of a neuron module is free to initialise the plugin in some other
+ * way, however.
  */
 typedef cudaError_t cuda_init_neurons_t(
 		unsigned globalPartitionCount,
@@ -59,7 +65,9 @@ typedef cudaError_t cuda_init_neurons_t(
 		float* df_neuronParameters,
 		float* df_neuronState,
 		nrng_t /* rng */,
-		uint32_t* d_valid);
+		uint32_t* d_valid,
+		size_t nInputs,
+		unsigned h_inputs[]);
 
 #ifdef __cplusplus
 }

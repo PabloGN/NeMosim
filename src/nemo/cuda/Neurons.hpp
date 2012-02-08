@@ -54,7 +54,7 @@ class Neurons : boost::noncopyable
 		Neurons(const nemo::network::Generator&, unsigned type_id, const Mapper&);
 
 		/*! Initialise the state of all neurons */
-		cudaError_t initHistory(
+		cudaError_t init(
 				unsigned globalPartitionCount,
 				param_t* d_params,
 				unsigned* d_psize);
@@ -200,6 +200,9 @@ class Neurons : boost::noncopyable
 
 		/* Size of each partition */
 		std::vector<unsigned> mh_partitionSize;
+
+		/* Index of each accumulator used by this neuron population */
+		std::vector<unsigned> m_inputs;
 
 		/* Number of partitions of \i this type */
 		unsigned localPartitionCount() const;
