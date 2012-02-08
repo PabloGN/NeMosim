@@ -161,9 +161,13 @@ gather( uint32_t cycle,
 	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_current);
 
 	/* Write back to global memory The global memory roundtrip is so that the
-	 * gather and fire steps can be done in separate kernel invocations. */
+	 * gather and fire steps can be done in separate kernel invocations.
+	 *
+	 * The host has passed in a pointer offset to the correct accumulator, so
+	 * we only need to offset based on partition.
+	 */
 
-	float* g_currentOut = incomingExcitatory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
+	float* g_currentOut = accumulator(g_current, PARTITION_COUNT, CURRENT_PARTITION, 0, s_params.pitch32);
 
 	for(unsigned bNeuron=0; bNeuron < s_partitionSize; bNeuron += THREADS_PER_BLOCK) {
 		unsigned neuron = bNeuron + threadIdx.x;

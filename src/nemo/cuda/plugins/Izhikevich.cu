@@ -225,8 +225,7 @@ updateNeurons(
 			gf_neuronState,
 			s_valid,
 			g_nrng,
-			incomingExcitatory(g_current, globalPartitionCount, s_globalPartition, s_params.pitch32),
-			// accumulator(g_current, globalPartitionCount, s_globalPartition, c_inputs, s_params.pitch32),
+			accumulator(g_current, globalPartitionCount, s_globalPartition, c_inputs, s_params.pitch32),
 			s_current, s_fstim,
 			&s_nFired,
 			s_fired);
