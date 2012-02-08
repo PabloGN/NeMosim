@@ -45,25 +45,20 @@ gather( unsigned cycle,
 		fcm_dt& fcm,
 		gq_entry_t* g_gqData,
 		unsigned* g_gqFill,
-		float sf_currentE[],
-		float sf_currentI[])
+		float sf_current[])
 {
 	/* Per-neuron bit-vectors. See bitvector.cu for accessors */
-	__shared__ uint32_t s_overflowE[S_BV_PITCH];
-	__shared__ uint32_t s_overflowI[S_BV_PITCH];
+	__shared__ uint32_t s_overflow[S_BV_PITCH];
 
-	bv_clear(s_overflowE);
-	bv_clear(s_overflowI);
+	bv_clear(s_overflow);
 
 	/* Accumulation is done using fixed-point, but the conversion back to
 	 * floating point is done in-place. */
-	fix_t* s_currentE = (fix_t*) sf_currentE;
-	fix_t* s_currentI = (fix_t*) sf_currentI;
+	fix_t* s_current = (fix_t*) sf_current;
 
 	for(int bNeuron=0; bNeuron < MAX_PARTITION_SIZE; bNeuron += THREADS_PER_BLOCK) {
 		unsigned neuron = bNeuron + threadIdx.x;
-		s_currentE[neuron] = 0U;
-		s_currentI[neuron] = 0U;
+		s_current[neuron] = 0U;
 	}
 	// __syncthreads();
 
@@ -119,15 +114,6 @@ gather( unsigned cycle,
 				weight = *((unsigned*)base + fcm.planeSize);
 			}
 
-#ifdef NEMO_SINGLE_CURRENT
-			fix_t* s_current = s_currentE;
-			uint32_t* s_overflow = s_overflowE;
-#else
-			bool excitatory = weight >= 0;
-			fix_t* s_current = excitatory ? s_currentE : s_currentI;
-			uint32_t* s_overflow = excitatory ? s_overflowE : s_overflowI;
-#endif
-
 			if(weight != 0) {
 				bool overflow = fx_atomicAdd(s_current + postsynaptic, weight);
 				bv_atomicSetPredicated(overflow, postsynaptic, s_overflow);
@@ -142,12 +128,7 @@ gather( unsigned cycle,
 		__syncthreads(); // to avoid overwriting s_groupSize
 	}
 
-#ifdef NEMO_SINGLE_CURRENT
-	fx_arrSaturatedToFloat(s_overflowE, s_currentE, sf_currentE, s_params.fixedPointScale);
-#else
-	fx_arrSaturatedToFloat(s_overflowE, false, s_currentE, sf_currentE, s_params.fixedPointScale);
-	fx_arrSaturatedToFloat(s_overflowI,  true, s_currentI, sf_currentI, s_params.fixedPointScale);
-#endif
+	fx_arrSaturatedToFloat(s_overflow, s_current, sf_current, s_params.fixedPointScale);
 }
 
 
@@ -162,8 +143,7 @@ gather( uint32_t cycle,
 		unsigned* g_gqFill,
 		float* g_current)
 {
-	__shared__ float s_currentE[MAX_PARTITION_SIZE];
-	__shared__ float s_currentI[MAX_PARTITION_SIZE];
+	__shared__ float s_current[MAX_PARTITION_SIZE];
 
 	__shared__ param_t s_params;
 
@@ -178,17 +158,16 @@ gather( uint32_t cycle,
 	} // sync done in loadParameters
 	loadParameters(g_params, &s_params);
 
-	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_currentE, s_currentI);
+	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_current);
 
 	/* Write back to global memory The global memory roundtrip is so that the
 	 * gather and fire steps can be done in separate kernel invocations. */
 
-	float* g_currentE = incomingExcitatory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
-	float* g_currentI = incomingInhibitory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
+	float* g_currentOut = incomingExcitatory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
+
 	for(unsigned bNeuron=0; bNeuron < s_partitionSize; bNeuron += THREADS_PER_BLOCK) {
 		unsigned neuron = bNeuron + threadIdx.x;
-		g_currentE[neuron] = s_currentE[neuron];
-		g_currentI[neuron] = s_currentI[neuron];
+		g_currentOut[neuron] = s_current[neuron];
 	}
 }
 
