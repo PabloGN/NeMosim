@@ -374,29 +374,43 @@ runDoubleRing(backend_t backend, bool separateSynapseTypes)
 /* Verify that we can create a synapse type with no actual synapses without
  * suffering any catastrophic errors */
 void
-emptySynapseType(backend_t backend, bool haveSynapses)
+emptySynapseType(backend_t backend, bool pop0connected, bool pop1connected)
 {
 	nemo::Network net;
 
-	/* unsigned synapse0 = */ net.addSynapseType();
+	unsigned synapse0 = net.addSynapseType();
 	unsigned synapse1 = net.addSynapseType();
 
-	unsigned iz = net.addNeuronType("Izhikevich", 1, &synapse1);
+	unsigned iz0 = net.addNeuronType("Izhikevich", 1, &synapse0);
+	unsigned iz1 = net.addNeuronType("Izhikevich", 1, &synapse1);
 
 	float args[7] = {0.02f, 0.25f, -65.0f, 2.0f, 0.0f, -13.0f, -65.0f};
-	for(unsigned nidx=0; nidx < 10; ++nidx) {
-		net.addNeuron(iz, nidx, 7, args);
+	unsigned nidx = 0;
+	for(; nidx < 10; ++nidx) {
+		net.addNeuron(iz0, nidx, 7, args);
+	}
+	for(; nidx < 20; ++nidx) {
+		net.addNeuron(iz1, nidx, 7, args);
 	}
 
-	if(haveSynapses) { // make one population not empty
-		net.addSynapse(synapse1, 0, 1, 1U, 5.0f);
+	if(pop0connected) {
+		net.addSynapse(synapse0, 0, 1, 1U, 5.0f);
+
+	}
+	if(pop1connected) {
+		net.addSynapse(synapse1, 10, 11, 1U, 5.0f);
 	}
 
 	nemo::Configuration conf = configuration(false, 1024, backend);
 
 	boost::scoped_ptr<nemo::Simulation> sim;
-	BOOST_REQUIRE_NO_THROW(sim.reset(nemo::simulation(net, conf)));
-	BOOST_REQUIRE_NO_THROW(sim->step());
+	if(pop0connected && pop1connected) {
+		sim.reset(nemo::simulation(net, conf));
+		sim->step();
+	} else {
+		BOOST_REQUIRE_NO_THROW(sim.reset(nemo::simulation(net, conf)));
+		BOOST_REQUIRE_NO_THROW(sim->step());
+	}
 }
 
 
@@ -1126,9 +1140,10 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 BOOST_AUTO_TEST_SUITE(synapse_types)
+	TEST_ALL_BACKENDS_N(empty1, emptySynapseType, true, true)
+	TEST_ALL_BACKENDS_N(empty2, emptySynapseType, true, false)
+	TEST_ALL_BACKENDS_N(empty3, emptySynapseType, false, true)
 	TEST_ALL_BACKENDS_N(double_ring, runDoubleRing, true)
-	TEST_ALL_BACKENDS_N(empty1, emptySynapseType, false)
-	TEST_ALL_BACKENDS_N(empty2, emptySynapseType, false)
 	TEST_ALL_BACKENDS(untargeted, untargetedSynapseType)
 BOOST_AUTO_TEST_SUITE_END()
 
