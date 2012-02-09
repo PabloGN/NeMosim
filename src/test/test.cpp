@@ -314,10 +314,10 @@ runRing(backend_t backend, unsigned ncount, unsigned delay)
 	for(unsigned ms=1; ms < duration; ++ms) {
 		const std::vector<unsigned>& fired = sim->step();
 		if(delay == 1) {
-			BOOST_CHECK_EQUAL(fired.size(), 1U);
+			BOOST_REQUIRE_EQUAL(fired.size(), 1U);
 			BOOST_REQUIRE_EQUAL(fired.front(), ms % ncount);
 		} else if(ms % delay == 0) {
-			BOOST_CHECK_EQUAL(fired.size(), 1U);
+			BOOST_REQUIRE_EQUAL(fired.size(), 1U);
 			BOOST_REQUIRE_EQUAL(fired.front(), (ms / delay) % ncount);
 		} else {
 			BOOST_CHECK_EQUAL(fired.size(), 0U);
@@ -444,11 +444,11 @@ testNeuronTypeMixture(backend_t backend, unsigned szOthers, bool izFirst)
 {
 	const unsigned szRing = 1024;
 	boost::scoped_ptr<nemo::izhikevich::Network> net(new nemo::izhikevich::Network());
-	unsigned synapseType = net->addSynapseType();
+	unsigned synapseType = 0U;
 	if(izFirst) {
 		createRing(net.get(), 0U, synapseType, szRing);
 	}
-	unsigned poisson = net->addNeuronType("PoissonSource", 1, &synapseType);
+	unsigned poisson = net->addNeuronType("PoissonSource", 0, NULL);
 	float p = 0.001f;
 	for(unsigned n=szRing; n<szRing+szOthers; ++n) {
 		net->addNeuron(poisson, n, 1, &p);

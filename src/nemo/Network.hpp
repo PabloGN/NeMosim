@@ -62,6 +62,9 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 * This function must be called before neurons of the specified type
 		 * can be added to the network.
 		 *
+		 * For input neurons, i.e. neurons which are unaffected by incoming
+		 * synapses nInputs should be 0, while inputs should be NULL.
+		 *
 		 * \throws if any of the synapse types do not exist
 		 * \throws if on a subsequent call the synapse types are not the same
 		 */
