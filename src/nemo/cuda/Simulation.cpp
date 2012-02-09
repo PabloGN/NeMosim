@@ -17,6 +17,7 @@
 #include <nemo/NetworkImpl.hpp>
 #include <nemo/fixedpoint.hpp>
 
+#include "Parameters.hpp"
 #include "DeviceAssertions.hpp"
 #include "exception.hpp"
 
@@ -77,23 +78,6 @@ mapCompact(const nemo::network::Generator& net, unsigned partitionSize)
 	return mapper;
 }
 
-
-/*! Verify device memory pitch
- *
- * On the device a number of arrays have exactly the same shape. These share a
- * common pitch parameter. This function verifies that the memory allocation
- * does what we expect.
- */
-void
-checkPitch(size_t found, size_t expected)
-{
-	using boost::format;
-	if(found != 0 && expected != found) {
-		throw nemo::exception(NEMO_CUDA_MEMORY_ERROR,
-				str(format("Pitch mismatch in device memory allocation. Found %u, expected %u")
-					% found % expected));
-	}
-}
 
 
 
@@ -161,7 +145,8 @@ Simulation::Simulation(
 	}
 #endif
 
-	param_t* d_params = setParameters(conf, pitch1, pitch32, net.maxDelay());
+	m_params.reset(new Parameters(*this, conf.fractionalBits(), pitch1, pitch32, net.maxDelay()));
+	m_params->copyToDevice();
 	resetTimer();
 
 	CUDA_SAFE_CALL(cudaStreamCreate(&m_streamCompute));
@@ -179,7 +164,7 @@ Simulation::Simulation(
 			i != m_neurons.end(); ++i) {
 		runKernel((*i)->init(
 				m_mapper.partitionCount(),
-				d_params,
+				m_params->d_data(),
 				md_partitionSize.get()));
 	}
 }
@@ -297,35 +282,6 @@ Simulation::d_allocated() const
 }
 
 
-param_t*
-Simulation::setParameters(
-		const nemo::ConfigurationImpl& conf,
-		size_t pitch1, size_t pitch32, unsigned maxDelay)
-{
-	param_t params;
-
-	/* Need a max of at least 1 in order for local queue to be non-empty */
-	params.maxDelay = std::max(1U, maxDelay);
-	params.pitch1 = pitch1;
-	params.pitch32 = pitch32;
-	params.pitch64 = m_recentFiring.wordPitch();
-	checkPitch(m_currentStimulus.wordPitch(), params.pitch32);
-	checkPitch(m_firingBuffer.wordPitch(), params.pitch1);
-	checkPitch(m_firingStimulus.wordPitch(), params.pitch1);;
-
-	unsigned fbits = conf.fractionalBits();
-	params.fixedPointScale = 1 << fbits;
-	params.fixedPointFractionalBits = fbits;
-
-	void* d_ptr;
-	d_malloc(&d_ptr, sizeof(param_t), "Global parameters");
-	md_params = boost::shared_ptr<param_t>(static_cast<param_t*>(d_ptr), d_free);
-	memcpyBytesToDevice(d_ptr, &params, sizeof(param_t));
-	return md_params.get();
-}
-
-
-
 
 void
 Simulation::runKernel(cudaError_t status)
@@ -359,7 +315,7 @@ Simulation::prefire()
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
 				md_partitionSize.get(),
-				md_params.get(),
+				m_params->d_data(),
 				m_current.deviceData(i),
 				(*cm)->d_fcm(),
 				(*cm)->d_gqData(),
@@ -381,7 +337,7 @@ Simulation::fire()
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
-				md_params.get(),
+				m_params->d_data(),
 				md_partitionSize.get(),
 				m_firingStimulus.d_buffer(),
 				md_istim,
@@ -407,7 +363,7 @@ Simulation::postfire()
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
-				md_params.get(),
+				m_params->d_data(),
 				// firing buffers
 				md_nFired.get(),
 				m_fired.deviceData(),
@@ -430,7 +386,7 @@ Simulation::postfire()
 			m_timer.elapsedSimulation(),
 			m_mapper.partitionCount(),
 			md_partitionSize.get(),
-			md_params.get(),
+			m_params->d_data(),
 			m_cm.d_rcm(),
 			m_recentFiring.deviceData(),
 			m_firingBuffer.d_buffer(),
@@ -463,7 +419,7 @@ Simulation::propagate(unsigned synapseTypeIdx, uint32_t* d_fired, int nfired)
 	assert_or_throw(!m_stdp, "Brian-specific function propagate only well-defined when STDP is not enabled");
 	runKernel(::compact(m_streamCompute,
 				md_partitionSize.get(),
-				md_params.get(),
+				m_params->d_data(),
 				m_mapper.partitionCount(),
 				d_fired,
 				md_nFired.get(),
@@ -510,7 +466,7 @@ Simulation::applyStdp(float reward)
 				m_mapper.partitionCount(),
 				md_partitionSize.get(),
 				fbits,
-				md_params.get(),
+				m_params->d_data(),
 				m_cm.d_fcm(),
 				m_cm.d_rcm(),
 				m_stdp->minExcitatoryWeight(),

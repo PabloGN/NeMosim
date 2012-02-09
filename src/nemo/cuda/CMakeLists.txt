@@ -77,6 +77,7 @@ CUDA_ADD_LIBRARY(nemo_cuda SHARED
 	LocalQueue.cpp
 	Neurons.cpp
 	Outgoing.cpp
+	Parameters.cpp
 	construction/FcmIndex.cpp
 	runtime/Delays.cpp
 	runtime/RCM.cpp

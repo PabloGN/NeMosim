@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <boost/optional.hpp>
 
@@ -39,6 +40,8 @@ namespace nemo {
 	}
 
 	namespace cuda {
+
+		class Parameters;
 
 /*! \namespace nemo::cuda
  *
@@ -290,6 +293,7 @@ class Simulation : public nemo::SimulationBackend
 		Simulation(const network::Generator&, const nemo::ConfigurationImpl&);
 
 		friend SimulationBackend* simulation(const network::Generator& net, const ConfigurationImpl& conf);
+		friend class Parameters;
 
 		Mapper m_mapper;
 
@@ -327,24 +331,7 @@ class Simulation : public nemo::SimulationBackend
 		NVector<nidx_dt> m_fired;
 		boost::shared_array<unsigned> md_nFired;
 
-		boost::shared_ptr<param_t> md_params;
-
-		/* Initialise the simulation-wide parameters on the device
-		 *
-		 * All kernels use a single pitch for all 64-, 32-, and 1-bit
-		 * per-neuron data This function sets these common pitches and also
-		 * checks that all relevant arrays have the same pitch.
-		 *
-		 * \param pitch1 pitch of 1-bit per-neuron data
-		 * \param pitch32 pitch of 32-bit per-neuron data
-		 * \param maxDelay maximum delay found in the network
-		 *
-		 * \return device pointer to parameters. The device memory is handled
-		 * 		by this class rather than the caller.
-		 */
-		param_t* setParameters(
-				const nemo::ConfigurationImpl& conf,
-				size_t pitch1, size_t pitch32, unsigned maxDelay);
+		boost::scoped_ptr<Parameters> m_params;
 
 		/* Size of each partition, stored on the device in a single array. */
 		boost::shared_array<unsigned> md_partitionSize;
