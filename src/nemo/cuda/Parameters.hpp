@@ -1,3 +1,6 @@
+#ifndef NEMO_CUDA_PARAMETERS_HPP
+#define NEMO_CUDA_PARAMETERS_HPP
+
 /* Copyright 2010 Imperial College London
  *
  * This file is part of nemo.
@@ -7,6 +10,7 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <vector>
 #include <boost/shared_ptr.hpp>
 
 #include "parameters.cu_h"
@@ -38,11 +42,18 @@ class Parameters
 				unsigned fbits, size_t pitch1,
 				size_t pitch32, unsigned maxDelay);
 
+		/* Create a copy, with no associated device memory */
+		Parameters(const Parameters&);
+
 		void copyToDevice();
+
+		void setInputs(const std::vector<unsigned>& inputs);
 
 		param_t* d_data() const { return md_params.get(); }
 
 	private :
+
+		const Parameters& operator=(const Parameters&);
 
 		Parameters();
 
@@ -67,3 +78,5 @@ checkPitch(size_t found, size_t expected);
 	}
 
 }
+
+#endif

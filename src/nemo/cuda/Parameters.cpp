@@ -7,6 +7,8 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+
 #include "Parameters.hpp"
 #include "Simulation.hpp"
 
@@ -32,6 +34,25 @@ Parameters::Parameters(
 
 	mh_params.fixedPointScale = 1 << fbits;
 	mh_params.fixedPointFractionalBits = fbits;
+}
+
+
+
+Parameters::Parameters(const Parameters& rhs)
+{
+	mh_params = rhs.mh_params;
+}
+
+
+
+void
+Parameters::setInputs(const std::vector<unsigned>& inputs)
+{
+	if(inputs.size() > MAX_NEURON_INPUTS) {
+		throw nemo::exception(NEMO_INVALID_INPUT,
+				"The CUDA backend supports no more than MAX_NEURON_INPUTS input types for each neuron type");
+	}
+	std::copy(inputs.begin(), inputs.end(), mh_params.inputs);
 }
 
 

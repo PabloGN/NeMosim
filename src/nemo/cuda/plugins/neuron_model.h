@@ -65,9 +65,7 @@ typedef cudaError_t cuda_init_neurons_t(
 		float* df_neuronParameters,
 		float* df_neuronState,
 		nrng_t /* rng */,
-		uint32_t* d_valid,
-		size_t nInputs,
-		unsigned h_inputs[]);
+		uint32_t* d_valid);
 
 #ifdef __cplusplus
 }

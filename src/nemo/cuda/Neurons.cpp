@@ -17,6 +17,7 @@
 #include <nemo/network/Generator.hpp>
 #include <nemo/RNG.hpp>
 
+#include "Parameters.hpp"
 #include "types.h"
 #include "exception.hpp"
 #include "kernel.hpp"
@@ -110,21 +111,24 @@ Neurons::Neurons(const network::Generator& net,
 cudaError_t
 Neurons::init(
 		unsigned globalPartitionCount,
-		param_t* d_params,
+		const Parameters& params,
 		unsigned* d_psize)
 {
+	m_globalParams.reset(new Parameters(params));
+	m_globalParams->setInputs(m_inputs);
+	m_globalParams->copyToDevice();
+
+	//! create own local copy
 	cuda_init_neurons_t* init_neurons = (cuda_init_neurons_t*) m_plugin.function("cuda_init_neurons");
 	return init_neurons(globalPartitionCount,
 			localPartitionCount(),
 			m_basePartition,
 			d_psize,
-			d_params,
+			m_globalParams->d_data(),
 			m_param.deviceData(),
 			m_state.deviceData(),
 			m_nrng,
-			m_valid.d_data(),
-			m_inputs.size(),
-			&m_inputs[0]);
+			m_valid.d_data());
 }
 
 
@@ -169,7 +173,6 @@ Neurons::update(
 		cudaStream_t stream,
 		cycle_t cycle,
 		unsigned globalPartitionCount,
-		param_t* d_params,
 		unsigned* d_psize,
 		uint32_t* d_fstim,
 		float* d_istim,
@@ -188,7 +191,7 @@ Neurons::update(
 			localPartitionCount(),
 			m_basePartition,
 			d_psize,
-			d_params,
+			m_globalParams->d_data(),
 			m_param.deviceData(),
 			m_state.deviceData(),
 			m_nrng,

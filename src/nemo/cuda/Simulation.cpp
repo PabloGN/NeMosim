@@ -164,7 +164,7 @@ Simulation::Simulation(
 			i != m_neurons.end(); ++i) {
 		runKernel((*i)->init(
 				m_mapper.partitionCount(),
-				m_params->d_data(),
+				*m_params,
 				md_partitionSize.get()));
 	}
 }
@@ -337,7 +337,6 @@ Simulation::fire()
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
-				m_params->d_data(),
 				md_partitionSize.get(),
 				m_firingStimulus.d_buffer(),
 				md_istim,

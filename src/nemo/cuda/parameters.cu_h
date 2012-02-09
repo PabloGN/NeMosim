@@ -10,6 +10,7 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "kernel.cu_h"
 
 /*! Global parameters */
 struct param_t {
@@ -23,6 +24,9 @@ struct param_t {
 	size_t pitch1;
 	size_t pitch32;
 	size_t pitch64;
+
+	/* neuron-group specific array of indices of input accumulators */
+	unsigned inputs[MAX_NEURON_INPUTS];
 };
 
 #endif
