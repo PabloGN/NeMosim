@@ -23,6 +23,7 @@
 #include <nemo/construction/RCM.hpp>
 #include <nemo/cuda/construction/FcmIndex.hpp>
 #include <nemo/cuda/runtime/Delays.hpp>
+#include <nemo/cuda/construction/Delays.hpp>
 
 #include "exception.hpp"
 #include "fcm.cu_h"
@@ -90,7 +91,10 @@ ConnectivityMatrix::ConnectivityMatrix(
 
 	md_rcm = runtime::RCM(mapper.partitionCount(), h_rcm);
 
-	md_delays.reset(new runtime::Delays(mapper.partitionCount(), fcm_index));
+	construction::Delays h_delays(mapper.partitionCount());
+	h_delays.insert(fcm_index);
+
+	md_delays.reset(new runtime::Delays(h_delays));
 
 	m_outgoing = Outgoing(mapper.partitionCount(), fcm_index);
 	m_gq.allocate(mapper.partitionCount(), m_outgoing.maxIncomingWarps(), 1.0);
