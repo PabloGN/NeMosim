@@ -64,6 +64,42 @@ gather( cudaStream_t stream,
 
 
 
+
+/*! Perform local scatter step */
+cudaError_t
+scatterLocal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		unsigned* d_nFired,
+		nidx_dt* d_fired,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill,
+		delay_dt d_ndData[],
+		unsigned d_ndFill[]);
+
+
+
+/*! Perform global scatter step */
+cudaError_t
+scatterGlobal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		const outgoing_dt& d_outgoing,
+		gq_entry_t* d_gqData,
+		unsigned* d_gqFill,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill);
+
+
+/*! Perform both the local and global scatter steps
+ *
+ * The reason for calling this function rather than first \a scatterLocal and
+ * then \a scatterGlobal is that this can be quite a bit faster (nearly 10%
+ * measured). However, the two can only be called together in the special case
+ * when there is precisely one synapse type in the network.
+ */
 cudaError_t
 scatter(cudaStream_t stream,
 		unsigned cycle,
@@ -78,7 +114,6 @@ scatter(cudaStream_t stream,
 		unsigned* d_lqFill,
 		delay_dt d_ndData[],
 		unsigned d_ndFill[]);
-
 
 cudaError_t
 updateStdp(
