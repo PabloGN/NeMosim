@@ -17,14 +17,12 @@
 #include <vector>
 #include <deque>
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 
 #include <nemo/types.hpp>
 #include <nemo/network/Generator.hpp>
 #include <nemo/cuda/runtime/RCM.hpp>
-#include <nemo/cuda/runtime/Delays.hpp>
 
 #include "types.h"
 #include "kernel.cu_h"
@@ -46,9 +44,6 @@ namespace nemo {
 
 		namespace construction {
 			class FcmIndex;
-		}
-
-		namespace runtime {
 			class Delays;
 		}
 
@@ -106,11 +101,19 @@ class ConnectivityMatrix
 {
 	public:
 
+		/* Create a fully population connectivity matrix
+		 *
+		 * \param delays
+		 * 		Mapping from neurons to delays. This is added to as a
+		 * 		side-effect of construction the CM.
+		 *
+		 */
 		ConnectivityMatrix(
 				const nemo::network::Generator&,
 				const nemo::ConfigurationImpl&,
 				const Mapper&,
-				const synapse_type& typeIdx);
+				const synapse_type& typeIdx,
+				nemo::cuda::construction::Delays& delays);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
@@ -151,10 +154,6 @@ class ConnectivityMatrix
 
 		void printMemoryUsage(std::ostream&) const;
 
-		delay_dt* d_ndData() const { return md_delays->d_data(); }
-
-		unsigned* d_ndFill() const { return md_delays->d_fill(); }
-
 		/*! \return RCM device pointers */
 		rcm_dt* d_rcm() { return md_rcm.d_rcm(); }
 
@@ -186,10 +185,6 @@ class ConnectivityMatrix
 		void moveFcmToDevice(size_t totalWarps,
 				const std::vector<synapse_t>& h_targets,
 				const std::vector<weight_dt>& h_weights);
-
-		/*! For each neuron, record the delays for which there are /any/
-		 * outgoing connections */
-		boost::scoped_ptr<runtime::Delays> md_delays;
 
 		/* For spike delivery we need to keep track of all target partitions
 		 * for each neuron */

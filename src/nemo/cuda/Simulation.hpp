@@ -41,6 +41,10 @@ namespace nemo {
 
 	namespace cuda {
 
+		namespace runtime {
+			class Delays;
+		}
+
 		class Parameters;
 
 /*! \namespace nemo::cuda
@@ -312,6 +316,10 @@ class Simulation : public nemo::SimulationBackend
 
 		typedef boost::shared_ptr<ConnectivityMatrix> cm_t;
 		std::vector<cm_t> m_cm;
+
+		/*! For each neuron, record the delays for which there are /any/
+		 * outgoing connections */
+		boost::scoped_ptr<runtime::Delays> md_delays;
 
 		LocalQueue m_lq;
 

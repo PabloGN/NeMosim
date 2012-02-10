@@ -45,6 +45,8 @@ class Delays
 
 	private :
 
+		Delays();
+
 		friend class nemo::cuda::runtime::Delays;
 
 		/* Number of words in each row of data */

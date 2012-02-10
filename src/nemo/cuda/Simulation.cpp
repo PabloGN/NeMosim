@@ -16,6 +16,8 @@
 #include <nemo/exception.hpp>
 #include <nemo/NetworkImpl.hpp>
 #include <nemo/fixedpoint.hpp>
+#include <nemo/cuda/construction/Delays.hpp>
+#include <nemo/cuda/runtime/Delays.hpp>
 
 #include "Parameters.hpp"
 #include "DeviceAssertions.hpp"
@@ -126,9 +128,12 @@ Simulation::Simulation(
 	h_partitionSize.resize(MAX_PARTITION_COUNT, 0); // extend
 	memcpyToDevice(md_partitionSize.get(), h_partitionSize);
 
+	construction::Delays h_delays(m_mapper.partitionCount());
+
 	for(unsigned typeIdx=0; typeIdx < net.synapseTypeCount(); ++typeIdx) {
-		m_cm.push_back(cm_t(new ConnectivityMatrix(net, conf, m_mapper, typeIdx)));
+		m_cm.push_back(cm_t(new ConnectivityMatrix(net, conf, m_mapper, typeIdx, h_delays)));
 	}
+	md_delays.reset(new runtime::Delays(h_delays));
 
 #ifdef NEMO_STDP_ENABLED
 	if(m_stdp) {
@@ -157,7 +162,9 @@ Simulation::Simulation(
 
 	//! \todo do m_cm size reporting here as well
 	if(conf.loggingEnabled()) {
-		std::cout << "\tLocal queue: " << m_lq.allocated() / (1<<20) << "MB\n";
+		const size_t MEGA = 1<<20;
+		std::cout << "\tLocal queue: " << m_lq.allocated() / MEGA << "MB\n";
+		std::cout << "\tdelays: " << md_delays->allocated() / MEGA << "MB\n";
 	}
 
 	for(neuron_groups::const_iterator i = m_neurons.begin();
@@ -275,6 +282,7 @@ Simulation::d_allocated() const
 	}
 
 	return sz
+		+ md_delays->allocated()
 		+ m_firingStimulus.d_allocated()
 		+ m_currentStimulus.d_allocated()
 		+ m_recentFiring.d_allocated()
@@ -373,8 +381,8 @@ Simulation::postfire()
 				// local spike delivery
 				m_lq.d_data(),
 				m_lq.d_fill(),
-				(*cm)->d_ndData(),
-				(*cm)->d_ndFill()
+				md_delays->d_data(),
+				md_delays->d_fill()
 			));
 	}
 

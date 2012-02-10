@@ -41,7 +41,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const nemo::network::Generator& net,
 		const nemo::ConfigurationImpl& conf,
 		const Mapper& mapper,
-		const synapse_type& typeIdx) :
+		const synapse_type& typeIdx,
+		nemo::cuda::construction::Delays& h_delays) :
 	m_mapper(mapper),
 	m_maxDelay(0),
 	md_fcmPlaneSize(0),
@@ -91,10 +92,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 
 	md_rcm = runtime::RCM(mapper.partitionCount(), h_rcm);
 
-	construction::Delays h_delays(mapper.partitionCount());
 	h_delays.insert(fcm_index);
-
-	md_delays.reset(new runtime::Delays(h_delays));
 
 	m_outgoing = Outgoing(mapper.partitionCount(), fcm_index);
 	m_gq.allocate(mapper.partitionCount(), m_outgoing.maxIncomingWarps(), 1.0);
@@ -228,7 +226,6 @@ ConnectivityMatrix::printMemoryUsage(std::ostream& out) const
 	out << "\tforward matrix: " << (md_fcmAllocated / MEGA) << "MB\n";
 	out << "\treverse matrix: " << (md_rcm.d_allocated() / MEGA) << "MB\n";
 	out << "\tglobal queue: " << (m_gq.allocated() / MEGA) << "MB\n";
-	out << "\tdelays: " << md_delays->allocated() / MEGA << "MB\n";
 	out << "\toutgoing: " << (m_outgoing.allocated() / MEGA) << "MB\n" << std::endl;
 }
 
@@ -372,7 +369,6 @@ ConnectivityMatrix::d_allocated() const
 	return md_fcmAllocated
 		+ md_rcm.d_allocated()
 		+ m_gq.allocated()
-		+ md_delays->allocated()
 		+ m_outgoing.allocated();
 }
 
