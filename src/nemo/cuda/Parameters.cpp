@@ -34,6 +34,8 @@ Parameters::Parameters(
 
 	mh_params.fixedPointScale = 1 << fbits;
 	mh_params.fixedPointFractionalBits = fbits;
+
+	std::fill(mh_params.inputs, mh_params.inputs+MAX_NEURON_INPUTS, ~0U);
 }
 
 
