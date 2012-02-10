@@ -37,6 +37,25 @@ lq_globalFillOffset(unsigned slot, unsigned maxDelay)
 }
 
 
+
+__device__
+unsigned
+lq_getCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
+{
+	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)];
+}
+
+
+
+__device__
+unsigned
+lq_clearCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
+{
+	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)] = 0;
+}
+
+
+
 /*!
  * \param cycle current simulation cycle
  * \param maxDelay maximum delay in the network
@@ -51,7 +70,9 @@ __device__
 unsigned
 lq_getAndClearCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
 {
-	return atomicExch(g_fill + lq_globalFillOffset(cycle % maxDelay, maxDelay), 0);
+	unsigned fill = lq_getCurrentFill(cycle, maxDelay, g_fill);
+	lq_clearCurrentFill(cycle, maxDelay, g_fill);
+	return fill;
 }
 
 
