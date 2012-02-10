@@ -65,10 +65,7 @@ __device__
 void
 scatterLocal_(
 		unsigned cycle,
-		//const param_t& s_params,
 		param_t* g_params,
-		//unsigned nFired,
-		//const nidx_dt* s_fired,
 		unsigned* g_nFired,        // device-only buffer.
 		nidx_dt* g_fired,          // device-only buffer, sparse output. pitch = c_pitch32.
 		unsigned g_ndFill[],
@@ -86,6 +83,11 @@ scatterLocal_(
 	__shared__ unsigned s_lqFill[MAX_DELAY];
 
 	lq_loadQueueFill(s_params.maxDelay, g_lqFill, s_lqFill);
+	/* The slot which was emptied in the previous call to scatterGlobal still
+	 * contains garbage. No need to clear it in global memory, however. */
+	if(threadIdx.x == 0) {
+		s_lqFill[(cycle-1) % s_params.maxDelay] = 0;
+	}
 	__syncthreads();
 
 	/*! \todo do more than one neuron at a time. We can deal with
@@ -176,7 +178,7 @@ scatterGlobal_(unsigned cycle,
 	__shared__ unsigned s_nLq;
 
 	if(threadIdx.x == 0) {
-		s_nLq = lq_getAndClearCurrentFill(cycle, s_params.maxDelay, g_lqFill);
+		s_nLq = lq_getCurrentFill(cycle, s_params.maxDelay, g_lqFill);
 	}
 	__syncthreads();
 

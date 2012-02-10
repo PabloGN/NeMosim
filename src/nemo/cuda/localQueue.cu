@@ -38,41 +38,20 @@ lq_globalFillOffset(unsigned slot, unsigned maxDelay)
 
 
 
-__device__
-unsigned
-lq_getCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
-{
-	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)];
-}
-
-
-
-__device__
-unsigned
-lq_clearCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
-{
-	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)] = 0;
-}
-
-
-
 /*!
  * \param cycle current simulation cycle
  * \param maxDelay maximum delay in the network
  * \param g_fill global memory containing the fill rate for each slot in the local queue.
  *
- * \return queue fill for the current partition slot due for delivery now, and
- * 		reset the relevant slot.
+ * \return queue fill for the current partition slot due for delivery now
  *
  * \see nemo::cuda::LocalQueue
  */
 __device__
 unsigned
-lq_getAndClearCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
+lq_getCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
 {
-	unsigned fill = lq_getCurrentFill(cycle, maxDelay, g_fill);
-	lq_clearCurrentFill(cycle, maxDelay, g_fill);
-	return fill;
+	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)];
 }
 
 
