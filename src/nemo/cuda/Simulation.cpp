@@ -365,26 +365,34 @@ Simulation::fire()
 void
 Simulation::postfire()
 {
+	//! \todo optimise for case where there is just a single current
+	runKernel(::scatterLocal(
+			m_streamCompute,
+			m_timer.elapsedSimulation(),
+			m_mapper.partitionCount(),
+			m_params->d_data(),
+			md_nFired.get(),
+			m_fired.deviceData(),
+			m_lq.d_data(),
+			m_lq.d_fill(),
+			md_delays->d_data(),
+			md_delays->d_fill()
+	));;
+
 	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm) {
-		runKernel(::scatter(
+		runKernel(::scatterGlobal(
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
 				m_params->d_data(),
-				// firing buffers
-				md_nFired.get(),
-				m_fired.deviceData(),
-				// outgoing
 				(*cm)->d_outgoing(),
 				(*cm)->d_gqData(),
 				(*cm)->d_gqFill(),
-				// local spike delivery
 				m_lq.d_data(),
-				m_lq.d_fill(),
-				md_delays->d_data(),
-				md_delays->d_fill()
+				m_lq.d_fill()
 			));
 	}
+
 
 #ifdef NEMO_STDP_ENABLED
 	if(m_stdp) {
