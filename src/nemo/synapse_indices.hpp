@@ -62,16 +62,6 @@ make_synapse_id(nidx_t neuron, id8_t type, id32_t synapse)
 }
 
 
-//! \todo remove this function after completed transition to multi-FCM setting
-inline
-synapse_id
-make_synapse_id0(nidx_t neuron, id32_t synapse)
-{
-	return make_synapse_id(neuron, 0, synapse);
-}
-
-
-
 }
 
 
