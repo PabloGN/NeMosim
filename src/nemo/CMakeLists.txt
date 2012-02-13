@@ -1,12 +1,6 @@
 OPTION(NEMO_WEIGHT_FIXED_POINT_SATURATION "Use saturating arithmetic when summing weights, to avoid overflow" ON)
 MARK_AS_ADVANCED(NEMO_WEIGHT_FIXED_POINT_SATURATION)
 
-IF(NEMO_BRIAN_ENABLED)
-	# Accumulate current in a single variable rather than separate excitatory
-	# and inhibitory currents"
-	SET(NEMO_SINGLE_CURRENT ON)
-ENDIF(NEMO_BRIAN_ENABLED)
-
 SET(BACKEND_LIBS "nemo_cpu")
 
 OPTION(NEMO_CUDA_ENABLED "Enabled simulation on CUDA devices" ON)
