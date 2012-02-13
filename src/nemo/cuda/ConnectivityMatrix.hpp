@@ -117,8 +117,8 @@ class ConnectivityMatrix
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
-		/*! \copydoc nemo::Simulation::getSynapsesFrom */
-		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
+		/*! \copydoc nemo::ConnectivitMatrix::getSynapsesFrom */
+		void getSynapsesFrom(unsigned neuron, std::vector<synapse_id>&) const;
 
 		/*! \copydoc nemo::Simulation::getSynapseTarget */
 		unsigned getTarget(const synapse_id& synapse) const;
@@ -158,6 +158,8 @@ class ConnectivityMatrix
 		rcm_dt* d_rcm() { return md_rcm.d_rcm(); }
 
 	private:
+
+		unsigned m_typeIdx;
 
 		const Mapper& m_mapper;
 
@@ -216,9 +218,6 @@ class ConnectivityMatrix
 		/* Count synapses to verify that m_cmAux contains dense rows */
 		std::map<nidx_t, unsigned> m_synapsesPerNeuron;
 #endif
-
-		/*! Internal buffer for synapse queries */
-		std::vector<synapse_id> m_queriedSynapseIds;
 
 		/*! Add synapse to forward matrix
 		 *

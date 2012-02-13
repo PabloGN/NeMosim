@@ -512,9 +512,11 @@ Simulation::setNeuron(unsigned h_neuron, unsigned nargs, const float args[])
 const std::vector<synapse_id>&
 Simulation::getSynapsesFrom(unsigned neuron)
 {
-#warning "Unsupported function"
-	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
-//	return m_cm.getSynapsesFrom(neuron);
+	m_queriedSynapseIds.clear();
+	for(std::vector<cm_t>::iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm){
+		(*cm)->getSynapsesFrom(neuron, m_queriedSynapseIds);
+	}
+	return m_queriedSynapseIds;
 }
 
 
@@ -522,9 +524,7 @@ Simulation::getSynapsesFrom(unsigned neuron)
 unsigned
 Simulation::getSynapseTarget(const synapse_id& synapse) const
 {
-#warning "Unsupported function"
-	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
-	//return m_cm.getTarget(synapse);
+	return m_cm.at(typeIndex(synapse))->getTarget(synapse);
 }
 
 
@@ -532,9 +532,7 @@ Simulation::getSynapseTarget(const synapse_id& synapse) const
 unsigned
 Simulation::getSynapseDelay(const synapse_id& synapse) const
 {
-#warning "Unsupported function"
-	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
-	//return m_cm.getDelay(synapse);
+	return m_cm.at(typeIndex(synapse))->getDelay(synapse);
 }
 
 
@@ -542,9 +540,7 @@ Simulation::getSynapseDelay(const synapse_id& synapse) const
 float
 Simulation::getSynapseWeight(const synapse_id& synapse) const
 {
-#warning "Unsupported function"
-	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
-	//return m_cm.getWeight(elapsedSimulation(), synapse);
+	return m_cm.at(typeIndex(synapse))->getWeight(elapsedSimulation(), synapse);
 }
 
 
@@ -552,9 +548,7 @@ Simulation::getSynapseWeight(const synapse_id& synapse) const
 unsigned char
 Simulation::getSynapsePlastic(const synapse_id& synapse) const
 {
-#warning "Unsupported function"
-	throw nemo::exception(NEMO_API_UNSUPPORTED, "Unsupported function");
-	//return m_cm.getPlastic(synapse);
+	return m_cm.at(typeIndex(synapse))->getPlastic(synapse);
 }
 
 

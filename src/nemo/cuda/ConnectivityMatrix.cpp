@@ -43,6 +43,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const Mapper& mapper,
 		const synapse_type& typeIdx,
 		nemo::cuda::construction::Delays& h_delays) :
+	m_typeIdx(typeIdx),
 	m_mapper(mapper),
 	m_maxDelay(0),
 	md_fcmPlaneSize(0),
@@ -252,8 +253,10 @@ ConnectivityMatrix::addAuxillary(const Synapse& s, size_t addr)
 
 
 
-const std::vector<synapse_id>&
-ConnectivityMatrix::getSynapsesFrom(unsigned source)
+void
+ConnectivityMatrix::getSynapsesFrom(
+		unsigned source,
+		std::vector<synapse_id>& queriedSynapseIds) const
 {
 	using boost::format;
 
@@ -278,13 +281,12 @@ ConnectivityMatrix::getSynapsesFrom(unsigned source)
 		nSynapses = iRow->second.size();
 	}
 
-	m_queriedSynapseIds.resize(nSynapses);
+	size_t bSynapse = queriedSynapseIds.size();
+	queriedSynapseIds.resize(bSynapse + nSynapses);
 
 	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		m_queriedSynapseIds[iSynapse] = make_synapse_id0(source, iSynapse);
+		queriedSynapseIds[bSynapse + iSynapse] = make_synapse_id(source, m_typeIdx, iSynapse);
 	}
-
-	return m_queriedSynapseIds;
 }
 
 

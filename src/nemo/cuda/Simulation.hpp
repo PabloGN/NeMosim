@@ -366,6 +366,9 @@ class Simulation : public nemo::SimulationBackend
 		cudaEvent_t m_eventFireDone;
 		cudaEvent_t m_firingStimulusDone;
 		cudaEvent_t m_currentStimulusDone;
+
+		/*! Internal buffer for synapse queries */
+		std::vector<synapse_id> m_queriedSynapseIds;
 };
 
 	} // end namespace cuda
