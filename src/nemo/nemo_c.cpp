@@ -190,16 +190,24 @@ nemo_add_neuron(nemo_network_t net,
 
 
 nemo_status_t
+nemo_add_synapse_type(nemo_network_t net, synapse_type spec, unsigned* type)
+{
+	CATCH(net, addSynapseType(spec), *type);
+}
+
+
+
+nemo_status_t
 nemo_add_synapse(nemo_network_t net,
+		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
 		unsigned delay,
 		float weight,
-		unsigned char is_plastic,
 		synapse_id* id)
 {
 	synapse_id sid = 0;
-	CALL(sid = net->addSynapse(source, target, delay, weight, is_plastic));
+	CALL(sid = net->addSynapse(typeIdx, source, target, delay, weight));
 	if(id != NULL) {
 		*id = sid;
 	}
