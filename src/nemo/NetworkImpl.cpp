@@ -141,42 +141,6 @@ NetworkImpl::setNeuron(unsigned nidx, unsigned nargs, const float args[])
 
 synapse_id
 NetworkImpl::addSynapse(
-		unsigned source,
-		unsigned target,
-		unsigned delay,
-		float weight,
-		unsigned char plastic)
-{
-	using boost::format;
-
-	if(delay < 1) {
-		throw nemo::exception(NEMO_INVALID_INPUT,
-				str(format("Invalid delay (%u) for synapse between %u and %u") % delay % source % target));
-	}
-
-	if(m_fcm.size() == 0) {
-		throw nemo::exception(NEMO_INVALID_INPUT, str(format("No synapse types added to network")));
-	}
-
-	if(m_fcm.size() > 1) {
-		throw nemo::exception(NEMO_INVALID_INPUT, str(format("Old addSynapse method used when more than one synapse type in use")));
-	}
-
-	id32_t id = m_fcm.front()[source].addSynapse(target, delay, weight, plastic != 0);
-
-	//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
-	m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));
-	m_minIdx = std::min(m_minIdx, int(std::min(source, target)));
-	m_maxDelay = std::max(m_maxDelay, delay);
-	m_maxWeight = std::max(m_maxWeight, weight);
-	m_minWeight = std::min(m_minWeight, weight);
-
-	return make_synapse_id0(source, id);
-}
-
-
-synapse_id
-NetworkImpl::addSynapse(
 		unsigned typeIdx,
 		unsigned source,
 		unsigned target,

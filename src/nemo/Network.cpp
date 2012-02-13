@@ -97,19 +97,6 @@ Network::setNeuronParameter(unsigned neuron, unsigned parameter, float val)
 
 synapse_id
 Network::addSynapse(
-		unsigned source,
-		unsigned target,
-		unsigned delay,
-		float weight,
-		unsigned char plastic)
-{
-	return m_impl->addSynapse(source, target, delay, weight, plastic);
-}
-
-
-
-synapse_id
-Network::addSynapse(
 		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
@@ -157,6 +144,8 @@ Network::getSynapsesFrom(unsigned neuron)
 {
 	return m_impl->getSynapsesFrom(neuron);
 }
+
+
 
 unsigned
 Network::maxDelay() const 

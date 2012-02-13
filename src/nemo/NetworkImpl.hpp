@@ -41,22 +41,14 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 				unsigned nInputs,
 				const unsigned inputs[]);
 
-		/*! \copydoc nemo::Network::addSynapseType */
-		unsigned addSynapseType(const synapse_type&);
-
 		/*! \copydoc nemo::Network::addNeuron */
 		void addNeuron(unsigned type, unsigned idx, unsigned nargs, const float args[]);
 
 		/*! \copydoc nemo::Network::setNeuron */
 		void setNeuron(unsigned idx, unsigned nargs, const float args[]);
 
-		/*! \copydoc nemo::Network::addSynapse */
-		synapse_id addSynapse(
-				unsigned source,
-				unsigned target,
-				unsigned delay,
-				float weight,
-				unsigned char plastic);
+		/*! \copydoc nemo::Network::addSynapseType */
+		unsigned addSynapseType(const synapse_type&);
 
 		/*! \copydoc nemo::Network::addSynapse */
 		synapse_id addSynapse(

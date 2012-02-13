@@ -115,17 +115,11 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 */
 		void setNeuron(unsigned idx, unsigned nargs, const float args[]);
 
-		/* Add a single synapse and return its unique id */
-		synapse_id addSynapse(
-				unsigned source,
-				unsigned target,
-				unsigned delay,
-				float weight,
-				unsigned char plastic);
-
 		/* Add a single synapse and return its unique id
 		 *
 		 * \param typeIdx synapse type index, as returned by addSynapseType
+		 *
+		 * \return Unique id of this synapse (which can be used for run-time queries).
 		 */
 		synapse_id addSynapse(
 				unsigned typeIdx,
