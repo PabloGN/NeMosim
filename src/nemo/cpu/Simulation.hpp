@@ -175,6 +175,8 @@ class NEMO_CPU_DLL_PUBLIC Simulation :
 
 		nidx_t validLocalIndex(unsigned g_idx) const;
 
+		/* Internal buffers for synapse queries */
+		std::vector<synapse_id> m_queriedSynapseIds;
 };
 
 

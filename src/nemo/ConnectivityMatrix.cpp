@@ -11,7 +11,7 @@
 
 #include <algorithm>
 #include <utility>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <boost/format.hpp>
 #include <boost/numeric/conversion/cast.hpp>
@@ -35,7 +35,6 @@
 #ifdef NEMO_CPU_DEBUG_TRACE
 
 #include <cstdio>
-#include <cstdlib>
 
 #define LOG(...) fprintf(stdout, __VA_ARGS__);
 
@@ -89,6 +88,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 		const ConfigurationImpl& conf,
 		const mapper_t& mapper,
 		unsigned typeIdx) :
+	m_typeIdx(typeIdx),
 	m_mapper(mapper),
 	m_neuronCount(mapper.maxLocalIdx() + 1),
 	m_fractionalBits(conf.fractionalBits()),
@@ -326,8 +326,10 @@ ConnectivityMatrix::applyStdp(float reward)
 
 
 
-const std::vector<synapse_id>&
-ConnectivityMatrix::getSynapsesFrom(unsigned source)
+void
+ConnectivityMatrix::getSynapsesFrom(
+		unsigned source,
+		std::vector<synapse_id>& queriedSynapseIds) const
 {
 	using boost::format;
 
@@ -352,13 +354,12 @@ ConnectivityMatrix::getSynapsesFrom(unsigned source)
 		nSynapses = iRow->second.size();
 	}
 
-	m_queriedSynapseIds.resize(nSynapses);
+	size_t bSynapse = queriedSynapseIds.size();
+	queriedSynapseIds.resize(bSynapse + nSynapses);
 
 	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		m_queriedSynapseIds[iSynapse] = make_synapse_id0(source, iSynapse);
+		queriedSynapseIds[bSynapse + iSynapse] = make_synapse_id(source, m_typeIdx, iSynapse);
 	}
-
-	return m_queriedSynapseIds;
 }
 
 

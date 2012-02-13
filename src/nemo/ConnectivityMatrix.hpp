@@ -117,7 +117,13 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 */
 		sidx_t addSynapse(nidx_t source, nidx_t target, const Synapse&);
 
-		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
+		/*! Get ids of synapses with given presynaptic neuron
+		 *
+		 * \param[in] neuron
+		 * \param[out] vector to be appended to. The vector may already have
+		 * 		entries in it. These will not be touched.
+		 */
+		void getSynapsesFrom(unsigned neuron, std::vector<synapse_id>&) const;
 
 		/*! \return all synapses for a given source and delay */
 		const Row& getRow(nidx_t source, delay_t) const;
@@ -178,6 +184,8 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 	private:
 
+		unsigned m_typeIdx;
+
 		const mapper_t& m_mapper;
 
 		unsigned m_neuronCount;
@@ -218,9 +226,6 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 * \param sidx synapse index within synapse groups for given postsynaptic neuron
 		 */
 		fix_t* weight(const RSynapse& rdata, uint32_t sidx) const;
-
-		/* Internal buffers for synapse queries */
-		std::vector<synapse_id> m_queriedSynapseIds;
 
 		/*! \todo We could save both time and space here by doing the same as
 		 * in the cuda backend, namely
