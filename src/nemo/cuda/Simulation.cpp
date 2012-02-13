@@ -106,7 +106,7 @@ Simulation::Simulation(
 	using boost::format;
 
 	size_t pitch1 = m_firingBuffer.wordPitch();
-	size_t pitch32 = m_current.wordPitch();
+	size_t pitch32 = m_currentStimulus.wordPitch();
 
 	/* Populate all neuron collections */
 	std::vector<unsigned> h_partitionSize;

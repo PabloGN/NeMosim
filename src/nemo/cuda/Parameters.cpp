@@ -28,7 +28,7 @@ Parameters::Parameters(
 	mh_params.pitch1 = pitch1;
 	mh_params.pitch32 = pitch32;
 	mh_params.pitch64 = sim.m_recentFiring.wordPitch();
-	checkPitch(sim.m_currentStimulus.wordPitch(), mh_params.pitch32);
+	checkPitch(sim.m_current.wordPitch(), mh_params.pitch32);
 	checkPitch(sim.m_firingBuffer.wordPitch(), mh_params.pitch1);
 	checkPitch(sim.m_firingStimulus.wordPitch(), mh_params.pitch1);;
 
