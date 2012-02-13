@@ -79,6 +79,8 @@ class Network : public nemo::Network
 			nemo::Network::setNeuron(nidx, 7, args);
 		}
 
+		unsigned synapseType() const { return m_stype; }
+
 	private :
 
 		unsigned m_ntype;

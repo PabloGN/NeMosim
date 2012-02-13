@@ -143,10 +143,12 @@ construct(nemo::izhikevich::Network& net, bool noiseConnections)
 	 * spike is enough to induce firing in the postsynaptic neuron. */
 	for(unsigned local=0; local < groupSize; ++local) {
 		net.addSynapse(
+#warning "STDP synapse not set up correctly"
+				net.synapseType(), // this should be an STDP synapse type
 				globalIdx(0, local),
 				globalIdx(1, local),
 				delay(local),
-				initWeight, 1);
+				initWeight);
 	}
 	
 	/* To complicate spike delivery and STDP computation, add a number of
@@ -158,11 +160,14 @@ construct(nemo::izhikevich::Network& net, bool noiseConnections)
 		for(unsigned ltgt=0; ltgt < groupSize; ++ltgt) {
 			if(lsrc != ltgt) {
 				net.addSynapse(
+#warning "STDP synapse not set up correctly"
+						0U, // this should be an STDP synapse type
 						globalIdx(0, lsrc),
 						globalIdx(1, ltgt),
 						delay(ltgt + lsrc),
-						-0.00001f,
-						 ltgt & 0x1);
+						-0.00001f
+						 // ltgt & 0x1
+						 );
 			}
 		}
 	}
@@ -343,7 +348,8 @@ testInvalidDynamicLength(bool stdp)
 	float param[7] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 	net.addNeuron(0, 7, param);
 	net.addNeuron(1, 7, param);
-	net.addSynapse(0U, 1U, 34U, 1.0f, stdp);
+#warning "STDP synapse type not set correctly"
+	net.addSynapse(net.synapseType(), 0U, 1U, 34U, 1.0f /*, stdp*/);
 
 	boost::scoped_ptr<nemo::Simulation> sim;
 

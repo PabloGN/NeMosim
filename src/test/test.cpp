@@ -506,12 +506,12 @@ testFixedPointSaturation(backend_t backend)
 
 	nemo::Configuration conf = configuration(false, 1024, backend);
 
-	net.addSynapse(INPUT0, OUTPUT_REF, 1, 1024.0f, false);
-	net.addSynapse(INPUT1, OUTPUT_REF, 1, 1024.0f, false);
-	net.addSynapse(INPUT0, OUTPUT_WEAK, 1, 1000.0f, false);
-	net.addSynapse(INPUT1, OUTPUT_WEAK, 1, 1000.0f, false);
-	net.addSynapse(INPUT0, OUTPUT_SAT, 1, 1100.0f, false);
-	net.addSynapse(INPUT1, OUTPUT_SAT, 1, 1100.0f, false);
+	net.addSynapse(net.synapseType(), INPUT0, OUTPUT_REF, 1, 1024.0f);
+	net.addSynapse(net.synapseType(), INPUT1, OUTPUT_REF, 1, 1024.0f);
+	net.addSynapse(net.synapseType(), INPUT0, OUTPUT_WEAK, 1, 1000.0f);
+	net.addSynapse(net.synapseType(), INPUT1, OUTPUT_WEAK, 1, 1000.0f);
+	net.addSynapse(net.synapseType(), INPUT0, OUTPUT_SAT, 1, 1100.0f);
+	net.addSynapse(net.synapseType(), INPUT1, OUTPUT_SAT, 1, 1100.0f);
 
 	/* Now, stimulating both the input neurons should produce nearly the same
 	 * result in the reference and saturating output neurons, as the stronger
