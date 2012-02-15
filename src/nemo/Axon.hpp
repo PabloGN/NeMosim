@@ -30,8 +30,7 @@ class Axon
 		 * \pre all internal vectors have the same length
 		 * \post all internal vectors have the same length
 		 */
-		id32_t addSynapse(unsigned target,
-				unsigned delay, float weight, bool plastic);
+		id32_t addSynapse(unsigned target, unsigned delay, float weight);
 
 		Synapse getSynapse(nidx_t source, id32_t id) const;
 
@@ -51,7 +50,6 @@ class Axon
 		std::vector<unsigned> m_targets;
 		std::vector<unsigned> m_delays;
 		std::vector<float> m_weights;
-		std::vector<bool> m_plastic;
 };
 
 }

@@ -10,14 +10,12 @@ id32_t
 Axon::addSynapse(
 		unsigned target,
 		unsigned delay,
-		float weight,
-		bool plastic)
+		float weight)
 {
 	id32_t id = id32_t(m_targets.size());
 	m_targets.push_back(target);
 	m_delays.push_back(delay);
 	m_weights.push_back(weight);
-	m_plastic.push_back(plastic);
 	return id;
 }
 
@@ -29,7 +27,7 @@ Axon::getSynapse(nidx_t source, id32_t id) const
 		throw nemo::exception(NEMO_INVALID_INPUT, "synapse id out or range");
 	}
 	return Synapse(source, m_delays[id],
-			AxonTerminal(id, m_targets[id], m_weights[id], m_plastic[id]));
+			AxonTerminal(id, m_targets[id], m_weights[id]));
 }
 
 

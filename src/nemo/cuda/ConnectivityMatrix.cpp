@@ -350,13 +350,6 @@ ConnectivityMatrix::getDelay(const synapse_id& id) const
 }
 
 
-unsigned char
-ConnectivityMatrix::getPlastic(const synapse_id& id) const
-{
-	return axonTerminalAux(id).plastic();
-}
-
-
 void
 ConnectivityMatrix::clearStdpAccumulator()
 {

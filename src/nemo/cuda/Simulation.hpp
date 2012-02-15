@@ -275,9 +275,6 @@ class Simulation : public nemo::SimulationBackend
 		/*! \copydoc nemo::Simulation::getSynapseWeight */
 		float getSynapseWeight(const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id& synapse) const;
-
 		void finishSimulation();
 
 		/* TIMING */

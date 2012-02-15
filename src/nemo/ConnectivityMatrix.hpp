@@ -33,7 +33,7 @@
 namespace nemo {
 
 
-/* The AxonTerminal in types.hpp includes 'plastic' specification. It's not
+/* The AxonTerminal in types.hpp includes 'id' specification. It's not
  * needed here. */
 struct FAxonTerminal
 {
@@ -136,9 +136,6 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		/*! \copydoc nemo::Simulation::getWeight */
 		float getWeight(const synapse_id& synapse) const;
-
-		/*! \copydoc nemo::Simulation::getPlastic */
-		unsigned char getPlastic(const synapse_id& synapse) const;
 
 		typedef runtime::Delays::const_iterator delay_iterator;
 
@@ -269,13 +266,12 @@ struct AxonTerminalAux
 	sidx_t idx;
 
 	unsigned delay;
-	bool plastic;
 
-	AxonTerminalAux(sidx_t idx, unsigned delay, bool plastic) :
-		idx(idx), delay(delay), plastic(plastic) { }
+	AxonTerminalAux(sidx_t idx, unsigned delay) :
+		idx(idx), delay(delay) { }
 
 	AxonTerminalAux() :
-		idx(~0), delay(~0), plastic(false) { }
+		idx(~0), delay(~0) { }
 };
 
 

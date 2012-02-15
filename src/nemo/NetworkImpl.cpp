@@ -159,7 +159,7 @@ NetworkImpl::addSynapse(
 
 	/* only non-plastic synapses supported via this API function */
 	try {
-		id32_t id = m_fcm.at(typeIdx)[source].addSynapse(target, delay, weight, false);
+		id32_t id = m_fcm.at(typeIdx)[source].addSynapse(target, delay, weight);
 
 		//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
 		m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));

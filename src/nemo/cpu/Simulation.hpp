@@ -107,9 +107,6 @@ class NEMO_CPU_DLL_PUBLIC Simulation :
 		/*! \copydoc nemo::Simulation::getSynapseWeight */
 		float getSynapseWeight(const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id& synapse) const;
-
 		/*! \copydoc nemo::Simulation::elapsedWallclock */
 		unsigned long elapsedWallclock() const;
 

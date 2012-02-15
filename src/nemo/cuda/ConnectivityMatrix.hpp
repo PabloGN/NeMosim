@@ -132,9 +132,6 @@ class ConnectivityMatrix
 		 */
 		float getWeight(cycle_t cycle, const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getPlastic(const synapse_id& synapse) const;
-
 		/*! Clear one plane of connectivity matrix on the device */
 		void clearStdpAccumulator();
 
@@ -249,14 +246,13 @@ class AxonTerminalAux
 
 		unsigned target() const { return m_target; }
 		unsigned delay() const { return m_delay; }
-		unsigned char plastic() const { return (unsigned char) m_plastic; }
 		size_t addr() const { return m_addr; }
 
 		AxonTerminalAux(const Synapse& s, size_t addr) :
-			m_target(s.target()), m_delay(s.delay), m_plastic(s.plastic() != 0), m_addr(addr) { }
+			m_target(s.target()), m_delay(s.delay), m_addr(addr) { }
 
 		AxonTerminalAux() :
-			m_target(~0), m_delay(~0), m_plastic(false), m_addr(~0) { }
+			m_target(~0), m_delay(~0), m_addr(~0) { }
 
 	private :
 
@@ -264,11 +260,9 @@ class AxonTerminalAux
 		unsigned m_target;
 
 		unsigned m_delay;
-		bool m_plastic;
 
 		/* Address into FCM on device */
 		size_t m_addr;
-
 };
 
 

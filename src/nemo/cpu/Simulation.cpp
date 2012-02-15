@@ -341,14 +341,6 @@ Simulation::getSynapseWeight(const synapse_id& synapse) const
 
 
 
-unsigned char
-Simulation::getSynapsePlastic(const synapse_id& synapse) const
-{
-	return m_cm.at(typeIndex(synapse))->getPlastic(synapse);
-}
-
-
-
 unsigned long
 Simulation::elapsedWallclock() const
 {

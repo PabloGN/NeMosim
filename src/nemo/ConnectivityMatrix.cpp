@@ -144,7 +144,7 @@ ConnectivityMatrix::addSynapse(
 		 * source and target neuron ids, since it's used for lookups basd on
 		 * these global ids */
 		aux_row& auxRow = m_cmAux[s.source];
-		insert(s.id(), AxonTerminalAux(sidx, delay, s.plastic() != 0), auxRow);
+		insert(s.id(), AxonTerminalAux(sidx, delay), auxRow);
 	}
 	return sidx;
 }
@@ -421,14 +421,6 @@ unsigned
 ConnectivityMatrix::getDelay(const synapse_id& id) const
 {
 	return axonTerminalAux(id).delay;
-}
-
-
-
-unsigned char
-ConnectivityMatrix::getPlastic(const synapse_id& id) const
-{
-	return axonTerminalAux(id).plastic;
 }
 
 
