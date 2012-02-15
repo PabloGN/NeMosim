@@ -1,3 +1,18 @@
+FIND_PACKAGE(OpenMP)
+
+IF(OPENMP_FOUND)
+	# User may still choose to build without OpenMP support, for whatever reason.
+	# On MSVC OpenMP introduces additional dynamic library requirements.
+	OPTION(NEMO_CPU_OPENMP_ENABLED "Use OpenMP for parallelisation of the CPU backend" TRUE)
+ELSE(OPENMP_FOUND)
+	MESSAGE(WARNING "OpenMP not found. CPU backend will be compiled without")
+ENDIF(OPENMP_FOUND)
+
+IF(NEMO_CPU_OPENMP_ENABLED AND OPENMP_FOUND)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+ENDIF(NEMO_CPU_OPENMP_ENABLED AND OPENMP_FOUND)
+
 OPTION(NEMO_WEIGHT_FIXED_POINT_SATURATION "Use saturating arithmetic when summing weights, to avoid overflow" ON)
 MARK_AS_ADVANCED(NEMO_WEIGHT_FIXED_POINT_SATURATION)
 
