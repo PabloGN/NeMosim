@@ -401,20 +401,6 @@ nemo_get_synapse_weight_s(nemo_simulation_t ptr, synapse_id synapse, float* weig
 }
 
 
-nemo_status_t
-nemo_get_synapse_plastic_n(nemo_network_t ptr, synapse_id synapse, unsigned char* plastic)
-{
-	CATCH(ptr, getSynapsePlastic(synapse), *plastic);
-}
-
-
-nemo_status_t
-nemo_get_synapse_plastic_s(nemo_simulation_t ptr, synapse_id synapse, unsigned char* plastic)
-{
-	CATCH(ptr, getSynapsePlastic(synapse), *plastic);
-}
-
-
 void
 step(nemo::SimulationBackend* sim,
 		const std::vector<unsigned>& fstim,

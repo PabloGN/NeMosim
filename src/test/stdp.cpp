@@ -218,7 +218,6 @@ verifyWeightChange(unsigned epoch, nemo::Simulation* sim, unsigned m, float rewa
 
 			unsigned actualDelay = sim->getSynapseDelay(*id);
 			BOOST_REQUIRE_EQUAL(delay(localIdx(target)), actualDelay);
-			BOOST_REQUIRE(sim->getSynapsePlastic(*id));
 
 			/* dt is positive for pre-post pair, and negative for post-pre
 			 * pairs */ 

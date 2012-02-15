@@ -256,14 +256,6 @@ NetworkImpl::getSynapseWeight(const synapse_id& id) const
 
 
 
-unsigned char
-NetworkImpl::getSynapsePlastic(const synapse_id& id) const
-{
-	return axon(neuronIndex(id), typeIndex(id)).getPlastic(synapseIndex(id));
-}
-
-
-
 const std::vector<synapse_id>&
 NetworkImpl::getSynapsesFrom(unsigned source)
 {

@@ -79,9 +79,6 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! \copydoc nemo::Network::getSynapseWeight */
 		float getSynapseWeight(const synapse_id&) const;
 
-		/*! \copydoc nemo::Network::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id&) const;
-
 		/*! \copydoc nemo::Network::getSynapsesFrom */
 		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
 

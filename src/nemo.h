@@ -557,26 +557,6 @@ nemo_status_t
 nemo_get_synapse_weight_s(nemo_simulation_t, synapse_id synapse, float* weight);
 
 
-/*! Get boolean plasticity status for a single synapse during construction
- *
- * \param synapse synapse id (see \a nemo_add_synapse)
- * \param[out] plastic boolean indicating whether synapse is plastic
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_get_synapse_plastic_n(nemo_network_t, synapse_id synapse, unsigned char* plastic);
-
-
-/*! Get boolean plasticity status for a single synapse during simulation
- *
- * \param synapse synapse id (see \a nemo_add_synapse)
- * \param[out] plastic boolean indicating whether synapse is plastic
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_get_synapse_plastic_s(nemo_simulation_t, synapse_id synapse, unsigned char* plastic);
-
-
 /*! \copydoc nemo_get_synapses_from_s */
 NEMO_DLL_PUBLIC
 nemo_status_t

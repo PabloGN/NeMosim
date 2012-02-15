@@ -131,14 +131,6 @@ Network::getSynapseWeight(const synapse_id& id) const
 
 
 
-unsigned char
-Network::getSynapsePlastic(const synapse_id& id) const
-{
-	return m_impl->getSynapsePlastic(id);
-}
-
-
-
 const std::vector<synapse_id>&
 Network::getSynapsesFrom(unsigned neuron)
 {

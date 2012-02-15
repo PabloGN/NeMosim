@@ -41,8 +41,6 @@ class Axon
 
 		float getWeight(id32_t id) const;
 
-		bool getPlastic(id32_t id) const;
-
 		size_t size() const;
 
 		/*! Append vector with all synapse ids contained in this axon */

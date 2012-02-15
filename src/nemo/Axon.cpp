@@ -58,14 +58,6 @@ Axon::getWeight(id32_t id) const
 
 
 
-bool
-Axon::getPlastic(id32_t id) const
-{
-	return m_plastic.at(id);
-}
-
-
-
 size_t
 Axon::size() const
 {
