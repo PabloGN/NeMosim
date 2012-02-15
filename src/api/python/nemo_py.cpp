@@ -223,6 +223,15 @@ checkInputVector(PyObject* obj, unsigned &vectorLength)
 
 
 
+
+unsigned
+add_synapse_type(nemo::Network& net)
+{
+	return net.addSynapseType(NEMO_SYNAPSE_ADDITIVE);
+}
+
+
+
 /*! Add one or more synapses
  *
  * \return synapse id
@@ -232,43 +241,54 @@ checkInputVector(PyObject* obj, unsigned &vectorLength)
  * arguments are replicated for each synapse.
  */
 PyObject*
-add_synapse(nemo::Network& net, PyObject* sources, PyObject* targets,
-		PyObject* delays, PyObject* weights, PyObject* plastics)
+add_synapse(nemo::Network& net,
+		PyObject* types,
+		PyObject* sources,
+		PyObject* targets,
+		PyObject* delays,
+		PyObject* weights)
 {
 	unsigned len = 0;
 
+	bool vectorTypes    = checkInputVector(types, len);
 	bool vectorSources  = checkInputVector(sources, len);
 	bool vectorTargets  = checkInputVector(targets, len);
 	bool vectorDelays   = checkInputVector(delays, len);
 	bool vectorWeights  = checkInputVector(weights, len);
-	bool vectorPlastics = checkInputVector(plastics, len);
 
 	to_python_value<synapse_id&> get_id;
 
 	if(len == 0) {
 		/* All inputs are scalars */
 		return get_id(net.addSynapse(
+					extract<unsigned>(types),
 					extract<unsigned>(sources),
 					extract<unsigned>(targets),
 					extract<unsigned>(delays),
-					extract<float>(weights),
-					extract<unsigned char>(plastics))
+					extract<float>(weights))
 				);
 	} else {
 		/* At least some inputs are vectors, so we need to return a list */
 		PyObject* list = PyList_New(len);
 		for(unsigned i=0; i != len; ++i) {
+			unsigned type = extract<unsigned>(vectorTypes ? PySequence_GetItem(types, i) : types);
 			unsigned source = extract<unsigned>(vectorSources ? PySequence_GetItem(sources, i) : sources);
 			unsigned target = extract<unsigned>(vectorTargets ? PySequence_GetItem(targets, i) : targets);
 			unsigned delay = extract<unsigned>(vectorDelays ? PySequence_GetItem(delays, i) : delays);
 			float weight = extract<float>(vectorWeights ? PySequence_GetItem(weights, i) : weights);
-			unsigned char plastic = extract<unsigned char>(vectorPlastics ? PySequence_GetItem(plastics, i) : plastics);
-			PyList_SetItem(list, i, get_id(net.addSynapse(source, target, delay, weight, plastic)));
+			PyList_SetItem(list, i, get_id(net.addSynapse(type, source, target, delay, weight)));
 		}
 		return list;
 	}
 }
 
+
+
+unsigned
+add_neuron_type(nemo::Network& net, const std::string& name, const std::vector<unsigned> inputs)
+{
+	return net.addNeuronType(name, inputs.size(), inputs.empty() ? 0 : &inputs[0]);
+}
 
 
 /*! Add one ore more neurons of arbitrary type
@@ -759,8 +779,9 @@ BOOST_PYTHON_MODULE(_nemo)
 	;
 
 	class_<nemo::Network, boost::noncopyable>("Network", NETWORK_DOC)
-		.def("add_neuron_type", &nemo::Network::addNeuronType, NETWORK_ADD_NEURON_TYPE_DOC)
+		.def("add_neuron_type", add_neuron_type, NETWORK_ADD_NEURON_TYPE_DOC)
 		.def("add_neuron", raw_function(add_neuron_va, 3), NETWORK_ADD_NEURON_DOC)
+		.def("add_synapse_type", add_synapse_type)
 		.def("add_synapse", add_synapse, NETWORK_ADD_SYNAPSE_DOC)
 		.def("set_neuron", raw_function(set_neuron_va<nemo::Network>, 2), CONSTRUCTABLE_SET_NEURON_DOC)
 		.def("get_neuron_state", get_neuron_state<nemo::Network>, CONSTRUCTABLE_GET_NEURON_STATE_DOC)
@@ -774,7 +795,6 @@ BOOST_PYTHON_MODULE(_nemo)
 		.def("get_synapse_target", get_synapse_target<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_TARGET_DOC)
 		.def("get_synapse_delay", get_synapse_delay<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_DELAY_DOC)
 		.def("get_synapse_weight", get_synapse_weight<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_WEIGHT_DOC)
-		.def("get_synapse_plastic", get_synapse_plastic<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_PLASTIC_DOC)
 	;
 
 	class_<nemo::Simulation, boost::shared_ptr<nemo::Simulation>, boost::noncopyable>(

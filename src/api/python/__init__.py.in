@@ -10,8 +10,12 @@ Configuration, and Simulation.
 Basic usage is as follows:
 
 1. create a configuration;
-2. create and populate a network by adding individual neurons and synapses; and
-3. create a simulation from the configuration and network object, and run the
+2. create a network
+3. register one or more synapse types with the network
+4. register one or more neuron types with the network, specifying the types of
+   synapses from which they receieve inputs
+5. populate the network by adding individual neurons and synapses; and
+6. create a simulation from the configuration and network object, and run the
    simulation providing stimulus and reading outputs as appropriate
 
 More details can be found in the documentation for each of these classes.
@@ -23,7 +27,8 @@ simulated for one second::
     import random
 
     net = nemo.Network()
-    iz = net.add_neuron_type('Izhikevich')
+    additive = net.add_synapse_type()
+    iz = net.add_neuron_type('Izhikevich', [s])
 
     # Excitatory neurons
     for nidx in range(800):
@@ -33,7 +38,7 @@ simulated for one second::
         net.add_neuron(iz, nidx, 0.02, 0.2, c, d, 5.0, 0.2*c, c);
         targets = range(1000)
         weights = [0.5*random.random() for tgt in targets]
-        net.add_synapse(nidx, targets, 1, weights, False);
+        net.add_synapse(additive, nidx, targets, 1, weights);
 
     # Inhibitory neurons
     for n in range(200):
@@ -45,7 +50,7 @@ simulated for one second::
         net.add_neuron(iz, nidx, a, b, c, 2.0, 2.0, b*c, c)
         targets = range(1000)
         weights = [-random.random() for tgt in targets]
-        net.add_synapse(nidx, targets, 1, weights, False);
+        net.add_synapse(additive, nidx, targets, 1, weights);
 
     conf = nemo.Configuration()
     sim = nemo.Simulation(net, conf)
@@ -119,14 +124,9 @@ def get_delays(self, ids):
 def get_weights(self, ids):
     return self.get_synapse_weight(ids)
 
-@deprecated
-def get_plastic(self, ids):
-    return self.get_synapse_plastic(ids)
-
 Simulation.get_targets = get_targets
 Simulation.get_delays = get_delays
 Simulation.get_weights = get_weights
-Simulation.get_plastic = get_plastic
 
 
 __version__ = '@NEMO_VERSION@'
