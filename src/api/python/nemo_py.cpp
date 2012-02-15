@@ -667,16 +667,6 @@ get_synapse_weight(const Net& net, PyObject* ids)
 }
 
 
-template<class Net>
-PyObject*
-get_synapse_plastic(const Net& net, PyObject* ids)
-{
-	return get_synapse_x<unsigned char>(
-			static_cast<const nemo::ReadableNetwork&>(net),
-			ids, std::mem_fun_ref(&nemo::ReadableNetwork::getSynapsePlastic));
-}
-
-
 
 /* This wrappers for overloads of nemo::Simulation::step */
 const std::vector<unsigned>&
@@ -827,7 +817,6 @@ BOOST_PYTHON_MODULE(_nemo)
 		.def("get_synapse_target", get_synapse_target<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_TARGET_DOC)
 		.def("get_synapse_delay", get_synapse_delay<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_DELAY_DOC)
 		.def("get_synapse_weight", get_synapse_weight<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_WEIGHT_DOC)
-		.def("get_synapse_plastic", get_synapse_plastic<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_PLASTIC_DOC)
 		.def("elapsed_wallclock", &nemo::Simulation::elapsedWallclock, SIMULATION_ELAPSED_WALLCLOCK_DOC)
 		.def("elapsed_simulation", &nemo::Simulation::elapsedSimulation, SIMULATION_ELAPSED_SIMULATION_DOC)
 		.def("reset_timer", &nemo::Simulation::resetTimer, SIMULATION_RESET_TIMER_DOC)
