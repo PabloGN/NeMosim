@@ -657,8 +657,8 @@ testGetSynapses(nemo::Network& net,
 			BOOST_REQUIRE_EQUAL(sim->getSynapseTarget(*i), net.getSynapseTarget(*i));
 			BOOST_REQUIRE_EQUAL(sim->getSynapseDelay(*i), net.getSynapseDelay(*i));
 			BOOST_REQUIRE_EQUAL(sim->getSynapsePlastic(*i), net.getSynapsePlastic(*i));
-			BOOST_REQUIRE_EQUAL(sim->getSynapsePlastic(*i),
-					fx_toFloat(fx_toFix(net.getSynapsePlastic(*i), fbits), fbits));
+			BOOST_REQUIRE_EQUAL(sim->getSynapseWeight(*i),
+					fx_toFloat(fx_toFix(net.getSynapseWeight(*i), fbits), fbits));
 
 		}
 	}
