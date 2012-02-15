@@ -22,11 +22,12 @@
 
 #ifdef NEMO_BRIAN_ENABLED
 const char* SIMULATION_PROPAGATE_DOC =
-	"Propagate spikes on GPU given firing\n"
+	"Propagate spikes on GPU for synapses of a single type given firing\n"
 	"\n"
 	"This function is intended purely for integration with Brian\n"
 	"\n"
 	"Inputs:\n"
+	"stype  -- synape type index, as returned by add_synapse_type\n"
 	"fired  -- device pointer non-compact list of fired neurons (on CUDA)\n"
 	"          or host pointer to compact list of fired neurons (on CPU)\n"
 	"nfired -- length of fired if on CPU\n"
@@ -704,9 +705,9 @@ step_fi(nemo::Simulation& sim,
 
 /*! \copydoc nemo::Simulation::propagate */
 size_t
-propagate(nemo::Simulation& sim, size_t fired, int nfired)
+propagate(nemo::Simulation& sim, unsigned synapseTypeIdx, size_t fired, int nfired)
 {
-	return size_t(sim.propagate(reinterpret_cast<uint32_t*>(fired), nfired));
+	return size_t(sim.propagate(synapseTypeIdx, reinterpret_cast<uint32_t*>(fired), nfired));
 }
 
 #endif
