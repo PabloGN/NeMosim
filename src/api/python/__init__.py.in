@@ -95,9 +95,6 @@ def step(self, fstim=None, istim=None):
 
 Simulation.step = step
 
-# Old synapse getters. These were originally vector-only, and were only exposed
-# for the simulation class. The new getters support both vector and scalar
-# forms, and use more consistent naming.
 
 def deprecated(func):
     """This is a decorator which can be used to mark functions
@@ -111,22 +108,6 @@ def deprecated(func):
     new_func.__doc__ = func.__doc__
     new_func.__dict__.update(func.__dict__)
     return new_func
-
-@deprecated
-def get_targets(self, ids):
-    return self.get_synapse_target(ids)
-
-@deprecated
-def get_delays(self, ids):
-    return self.get_synapse_delay(ids)
-
-@deprecated
-def get_weights(self, ids):
-    return self.get_synapse_weight(ids)
-
-Simulation.get_targets = get_targets
-Simulation.get_delays = get_delays
-Simulation.get_weights = get_weights
 
 
 __version__ = '@NEMO_VERSION@'
