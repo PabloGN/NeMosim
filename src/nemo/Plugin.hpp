@@ -20,6 +20,7 @@ typedef HMODULE dl_handle;
 #	include <ltdl.h>
 typedef lt_dlhandle dl_handle;
 #endif
+#include <set>
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/filesystem.hpp>
@@ -50,7 +51,7 @@ class NEMO_BASE_DLL_PUBLIC Plugin : private boost::noncopyable
 		 * Plugins are always located in a subdirectory, as they are backend-specific.
 		 * There is one system plugin directory and one per-user system directory.
 		 */
-		Plugin(const std::string& name, const std::string& subdir);
+		Plugin(const boost::filesystem::path& dir, const std::string& name);
 
 		~Plugin();
 
@@ -86,6 +87,12 @@ class NEMO_BASE_DLL_PUBLIC Plugin : private boost::noncopyable
 		 */
 		static void addPath(const std::string& dir);
 
+		typedef std::set<boost::filesystem::path> path_collection;
+		typedef path_collection::const_iterator path_iterator;
+
+		static path_iterator extraPaths_begin();
+		static path_iterator extraPaths_end();
+
 	private:
 
 		dl_handle m_handle;
@@ -93,14 +100,14 @@ class NEMO_BASE_DLL_PUBLIC Plugin : private boost::noncopyable
 		/*! Initialise the loader */
 		void init(const std::string& name);
 
-		/*! Set NeMo-specific search paths */
-		void setpath(const std::string& subdir);
-
-		/*! Load the library */
+		/*! Load the library, using standard search paths */
 		void load(const std::string& name);
 
+		/*! Load the library based on absolute path */
+		void load(const boost::filesystem::path& dir, const std::string& name);
+
 		/*! Additional paths where to look for plugins */
-		static std::vector<boost::filesystem::path> s_extraPaths;
+		static std::set<boost::filesystem::path> s_extraPaths;
 };
 
 }

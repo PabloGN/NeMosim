@@ -25,7 +25,7 @@ const char* HOME_ENV_VAR = "HOME";
 namespace nemo {
 
 
-std::vector<boost::filesystem::path> Plugin::s_extraPaths;
+std::set<boost::filesystem::path> Plugin::s_extraPaths;
 
 
 Plugin::Plugin(const std::string& name) :
@@ -42,13 +42,12 @@ Plugin::Plugin(const std::string& name) :
 
 
 
-Plugin::Plugin(const std::string& name, const std::string& subdir) :
+Plugin::Plugin(const boost::filesystem::path& dir, const std::string& name) :
 	m_handle(NULL)
 {
 	init(name);
 	try {
-		setpath(subdir);
-		load(name);
+		load(dir, name);
 	} catch(nemo::exception&) {
 		dl_exit();
 		throw;
@@ -122,44 +121,20 @@ Plugin::systemDirectory()
 
 
 
-void
-Plugin::setpath(const std::string& subdir)
+Plugin::path_iterator
+Plugin::extraPaths_begin()
 {
-	using boost::format;
-	using namespace boost::filesystem;
-
-	std::vector<path> paths = s_extraPaths;
-
-	path userPath = userDirectory() / subdir;
-	if(exists(userPath)) {
-		paths.push_back(userPath);
-	}
-
-	path systemPath = systemDirectory() / subdir;
-	paths.push_back(systemPath);
-
-	/*! \todo there's a potential issue here when loading on Windows. Ideally
-	 * we'd like to set the /exclusive/ search path for library loading here,
-	 * since the same plugin has the same name for different backends. The
-	 * windows API, however, seems to only ever add to the existing path.
-	 *
-	 * \see dl_setsearchpath
-	 */
-	for(std::vector<path>::const_iterator i = paths.begin();
-			i != paths.end(); ++i) {
-		bool success = false;
-		if(i == paths.begin()) {
-			success = dl_setsearchpath(i->string().c_str());
-		} else {
-			success = dl_addsearchdir(i->string().c_str());
-		}
-		if(!success) {
-			throw nemo::exception(NEMO_DL_ERROR,
-					str(format("Error when setting plugin search path (%s): %s")
-						% (*i) % dl_error()));
-		}
-	}
+	return s_extraPaths.begin();
 }
+
+
+
+Plugin::path_iterator
+Plugin::extraPaths_end()
+{
+	return s_extraPaths.end();
+}
+
 
 
 
@@ -168,6 +143,23 @@ Plugin::load(const std::string& name)
 {
 	using boost::format;
 	m_handle = dl_load(dl_libname(name).c_str());
+	if(m_handle == NULL) {
+		throw nemo::exception(NEMO_DL_ERROR,
+				str(format("Error when loading plugin %s: %s")
+					% dl_libname(name) % dl_error()));
+	}
+}
+
+
+
+void
+Plugin::load(const boost::filesystem::path& dir, const std::string& name)
+{
+	using boost::format;
+	using namespace boost::filesystem;
+
+	path fullpath = dir / path(dl_libname(name));
+	m_handle = dl_load(fullpath.string().c_str());
 	if(m_handle == NULL) {
 		throw nemo::exception(NEMO_DL_ERROR,
 				str(format("Error when loading plugin %s: %s")
@@ -199,7 +191,7 @@ Plugin::addPath(const std::string& dir)
 		throw nemo::exception(NEMO_DL_ERROR,
 				str(format("User-specified path %s could not be found") % dir));
 	}
-	s_extraPaths.push_back(path);
+	s_extraPaths.insert(path);
 }
 
 
