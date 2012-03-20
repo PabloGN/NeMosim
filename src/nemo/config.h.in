@@ -29,7 +29,7 @@
 #endif
 #cmakedefine NEMO_USER_PLUGIN_DIR "@NEMO_USER_PLUGIN_DIR@"
 
-const unsigned NEMO_MAX_NEURON_ARGS = 16;
+const unsigned NEMO_MAX_NEURON_ARGS = 32;
 
 
 #if defined _WIN32 || defined __CYGWIN__
