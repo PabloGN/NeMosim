@@ -235,7 +235,9 @@ add_synapse_type(nemo::Network& net)
 
 /*! Add one or more synapses
  *
- * \return synapse id
+ * \param getSynapseId
+ * \return if getSynapseId is true return either synapse id scalar or list,
+ * otherwise return None
  *
  * The arguments (other than net) may be either scalar or vector. All vectors
  * must be of the same length. If any of the inputs are vectors, the scalar
@@ -247,7 +249,8 @@ add_synapse(nemo::Network& net,
 		PyObject* sources,
 		PyObject* targets,
 		PyObject* delays,
-		PyObject* weights)
+		PyObject* weights,
+		bool getSynapseId)
 {
 	unsigned len = 0;
 
@@ -261,25 +264,28 @@ add_synapse(nemo::Network& net,
 
 	if(len == 0) {
 		/* All inputs are scalars */
-		return get_id(net.addSynapse(
+		synapse_id id = net.addSynapse(
 					extract<unsigned>(types),
 					extract<unsigned>(sources),
 					extract<unsigned>(targets),
 					extract<unsigned>(delays),
-					extract<float>(weights))
-				);
+					extract<float>(weights));
+		return getSynapseId ? get_id(id) : Py_None;
 	} else {
 		/* At least some inputs are vectors, so we need to return a list */
-		PyObject* list = PyList_New(len);
+		PyObject* ret = getSynapseId ? PyList_New(len) : Py_None;
 		for(unsigned i=0; i != len; ++i) {
 			unsigned type = extract<unsigned>(vectorTypes ? PySequence_GetItem(types, i) : types);
 			unsigned source = extract<unsigned>(vectorSources ? PySequence_GetItem(sources, i) : sources);
 			unsigned target = extract<unsigned>(vectorTargets ? PySequence_GetItem(targets, i) : targets);
 			unsigned delay = extract<unsigned>(vectorDelays ? PySequence_GetItem(delays, i) : delays);
 			float weight = extract<float>(vectorWeights ? PySequence_GetItem(weights, i) : weights);
-			PyList_SetItem(list, i, get_id(net.addSynapse(type, source, target, delay, weight)));
+			synapse_id id = net.addSynapse(type, source, target, delay, weight);
+			if(getSynapseId) {
+				PyList_SetItem(ret, i, get_id(id));
+			}
 		}
-		return list;
+		return ret;
 	}
 }
 
