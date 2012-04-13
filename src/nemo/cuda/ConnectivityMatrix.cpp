@@ -368,5 +368,28 @@ ConnectivityMatrix::d_allocated() const
 }
 
 
+cudaError_t
+ConnectivityMatrix::gather(
+		cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		unsigned* d_partitionSize,
+		param_t* d_globalParameters,
+		float* d_current)
+{
+	//! \todo call a plugin instead
+	return ::gather(
+		stream,
+		cycle,
+		partitionCount,
+		d_partitionSize,
+		d_globalParameters,
+		d_current,
+		md_fcm,
+		m_gq.d_data(),
+		m_gq.d_fill());
+}
+
+
 	} // end namespace cuda
 } // end namespace nemo

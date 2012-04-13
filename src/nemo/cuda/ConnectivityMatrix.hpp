@@ -137,9 +137,6 @@ class ConnectivityMatrix
 
 		size_t d_allocated() const;
 
-		/*! \return struct containing all FCM data needed by kernel */
-		const fcm_dt& d_fcm() const { return md_fcm; }
-
 		/*! \return struct containing all Outgoing data needed by kernel */
 		const outgoing_dt& d_outgoing() const { return m_outgoing.d_data(); }
 
@@ -153,6 +150,14 @@ class ConnectivityMatrix
 
 		/*! \return RCM device pointers */
 		rcm_dt* d_rcm() { return md_rcm.d_rcm(); }
+
+		cudaError_t gather(
+			cudaStream_t stream,
+			unsigned cycle,
+			unsigned partitionCount,
+			unsigned* d_partitionSize,
+			param_t* d_globalParameters,
+			float* d_current);
 
 	private:
 

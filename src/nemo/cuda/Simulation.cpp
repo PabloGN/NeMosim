@@ -318,16 +318,13 @@ Simulation::prefire()
 
 	unsigned i = 0;
 	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm, ++i) {
-		runKernel(::gather(
+		runKernel((*cm)->gather(
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
 				md_partitionSize.get(),
 				m_params->d_data(),
-				m_current.deviceData(i),
-				(*cm)->d_fcm(),
-				(*cm)->d_gqData(),
-				(*cm)->d_gqFill()));
+				m_current.deviceData(i)));
 	}
 }
 
