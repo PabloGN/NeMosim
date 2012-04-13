@@ -12,9 +12,13 @@ FUNCTION(PLUGIN PLUGIN_NAME)
 	INSTALL(TARGETS ${TARGET} DESTINATION ${NEMO_SYSTEM_PLUGIN_DIR}/cuda)
 ENDFUNCTION(PLUGIN)
 
+# Neuron models
 PLUGIN(Input)
 PLUGIN(PoissonSource)
 PLUGIN(Izhikevich)
 PLUGIN(IzhikevichRS)
 PLUGIN(Kuramoto)
 PLUGIN(IF_curr_exp)
+
+# Synapse models
+PLUGIN(AdditiveSynapse)

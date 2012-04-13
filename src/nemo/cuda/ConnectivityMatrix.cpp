@@ -50,7 +50,10 @@ ConnectivityMatrix::ConnectivityMatrix(
 	md_fcmAllocated(0),
 	mhf_weights(WARP_SIZE, 0),
 	m_fractionalBits(conf.fractionalBits()),
-	m_writeOnlySynapses(conf.writeOnlySynapses())
+	m_writeOnlySynapses(conf.writeOnlySynapses()),
+	//! \todo get name from network
+	m_plugin("AdditiveSynapse", "cuda"),
+	m_gather((cuda_gather_t*) m_plugin.function("gather"))
 {
 	//! \todo change synapse_t, perhaps to nidx_dt
 	std::vector<synapse_t> hf_targets(WARP_SIZE, INVALID_FORWARD_SYNAPSE);
@@ -377,8 +380,7 @@ ConnectivityMatrix::gather(
 		param_t* d_globalParameters,
 		float* d_current)
 {
-	//! \todo call a plugin instead
-	return ::gather(
+	return m_gather(
 		stream,
 		cycle,
 		partitionCount,
