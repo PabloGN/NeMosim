@@ -29,9 +29,20 @@ Network::~Network()
 
 
 unsigned
-Network::addNeuronType(const std::string& name)
+Network::addNeuronType(
+		const std::string& name,
+		unsigned nInputs,
+		const unsigned inputs[])
 {
-	return m_impl->addNeuronType(name);
+	return m_impl->addNeuronType(name, nInputs, inputs);
+}
+
+
+
+unsigned
+Network::addSynapseType(synapse_type type)
+{
+	return m_impl->addSynapseType(type);
 }
 
 
@@ -43,33 +54,11 @@ Network::addNeuron(unsigned type, unsigned idx,
 }
 
 
-void
-Network::addNeuron(unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	if(iz_type == ~0U) {
-		iz_type = m_impl->addNeuronType("Izhikevich");
-	}
-	float args[7] = {a, b, c, d, sigma, u, v};
-	m_impl->addNeuron(iz_type, idx, 7, args);
-}
-
 
 void
 Network::setNeuron(unsigned idx, unsigned nargs, const float args[])
 {
 	m_impl->setNeuron(idx, nargs, args);
-}
-
-
-void
-Network::setNeuron(unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	float args[7] = {a, b, c, d, sigma, u, v};
-	m_impl->setNeuron(idx, 7, args);
 }
 
 
@@ -108,15 +97,14 @@ Network::setNeuronParameter(unsigned neuron, unsigned parameter, float val)
 
 synapse_id
 Network::addSynapse(
+		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
 		unsigned delay,
-		float weight,
-		unsigned char plastic)
+		float weight)
 {
-	return m_impl->addSynapse(source, target, delay, weight, plastic);
+	return m_impl->addSynapse(typeIdx, source, target, delay, weight);
 }
-
 
 
 unsigned
@@ -143,19 +131,13 @@ Network::getSynapseWeight(const synapse_id& id) const
 
 
 
-unsigned char
-Network::getSynapsePlastic(const synapse_id& id) const
-{
-	return m_impl->getSynapsePlastic(id);
-}
-
-
-
 const std::vector<synapse_id>&
 Network::getSynapsesFrom(unsigned neuron)
 {
 	return m_impl->getSynapsesFrom(neuron);
 }
+
+
 
 unsigned
 Network::maxDelay() const 

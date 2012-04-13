@@ -1,9 +1,10 @@
+#include <cmath>
 #include <vector>
 #include <boost/test/unit_test.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <nemo.hpp>
 
-#include <cmath>
+#include <nemo/izhikevich.hpp>
+#include "utils.hpp"
 
 void
 runSimulation(
@@ -104,12 +105,13 @@ configuration(bool stdp, unsigned partitionSize, backend_t backend)
 
 
 void
-addExcitatoryNeuron(unsigned nidx, nemo::Network& net, float sigma)
+addExcitatoryNeuron(unsigned nidx, nemo::izhikevich::Network& net, float sigma)
 {
 	float r = 0.5;
 	float b = 0.25f - 0.05f * r;
 	float v = -65.0;
-	net.addNeuron(nidx, 0.02f + 0.08f * r, b, v, 2.0f, b*v, v, sigma);
+	float args[7] = {0.02f + 0.08f * r, b, v, 2.0f, sigma, b*v, v};
+	net.addNeuron(nidx, 7, args);
 }
 
 
@@ -130,7 +132,13 @@ ringNeuronIndex(unsigned nth, unsigned ncount, unsigned n0, unsigned nstep)
 
 
 void
-createRing(nemo::Network* net, unsigned ncount, unsigned n0, bool plastic, unsigned nstep, unsigned delay)
+createRing(nemo::Network* net,
+		unsigned neuronType,
+		unsigned synapseType,
+		unsigned ncount,
+		unsigned n0,
+		unsigned nstep,
+		unsigned delay)
 {
 	for(unsigned i_source=0; i_source < ncount; ++i_source) {
 		float v = -65.0f;
@@ -138,9 +146,10 @@ createRing(nemo::Network* net, unsigned ncount, unsigned n0, bool plastic, unsig
 		float r = 0.5f;
 		float r2 = r * r;
 		unsigned source = ringNeuronIndex(i_source, ncount, n0, nstep);
-		net->addNeuron(source, 0.02f, b, v+15.0f*r2, 8.0f-6.0f*r2, b*v, v, 0.0f);
+		float args[7] = {0.02f, b, v+15.0f*r2, 8.0f-6.0f*r2, 0.0f, b*v, v};
+		net->addNeuron(neuronType, source, 7, args);
 		unsigned target = ringNeuronIndex(i_source+1, ncount, n0, nstep);
-		net->addSynapse(source, target, delay, 1000.0f, plastic);
+		net->addSynapse(synapseType, source, target, delay, 1000.0f);
 	}
 }
 
@@ -149,7 +158,11 @@ createRing(nemo::Network* net, unsigned ncount, unsigned n0, bool plastic, unsig
 nemo::Network*
 createRing(unsigned ncount, unsigned n0, bool plastic, unsigned nstep, unsigned delay)
 {
-	nemo::Network* net = new nemo::Network;
-	createRing(net, ncount, n0, plastic, nstep, delay);
+	if(plastic) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo does not support STDP");
+	}
+
+	nemo::izhikevich::Network* net = new nemo::izhikevich::Network;
+	createRing(static_cast<nemo::Network*>(net), 0U, 0U, ncount, n0, nstep, delay);
 	return net;
 }

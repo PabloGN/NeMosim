@@ -1,17 +1,32 @@
+FIND_PACKAGE(OpenMP)
+
+IF(OPENMP_FOUND)
+	# User may still choose to build without OpenMP support, for whatever reason.
+	# On MSVC OpenMP introduces additional dynamic library requirements.
+	OPTION(NEMO_CPU_OPENMP_ENABLED "Use OpenMP for parallelisation of the CPU backend" TRUE)
+ELSE(OPENMP_FOUND)
+	MESSAGE(WARNING "OpenMP not found. CPU backend will be compiled without")
+ENDIF(OPENMP_FOUND)
+
+IF(NEMO_CPU_OPENMP_ENABLED AND OPENMP_FOUND)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+ENDIF(NEMO_CPU_OPENMP_ENABLED AND OPENMP_FOUND)
+
 OPTION(NEMO_WEIGHT_FIXED_POINT_SATURATION "Use saturating arithmetic when summing weights, to avoid overflow" ON)
 MARK_AS_ADVANCED(NEMO_WEIGHT_FIXED_POINT_SATURATION)
 
-IF(NEMO_BRIAN_ENABLED)
-	# Accumulate current in a single variable rather than separate excitatory
-	# and inhibitory currents"
-	SET(NEMO_SINGLE_CURRENT ON)
-ENDIF(NEMO_BRIAN_ENABLED)
-
 SET(BACKEND_LIBS "nemo_cpu")
+
+OPTION(NEMO_CUDA_ENABLED "Enabled simulation on CUDA devices" ON)
+
 IF(NEMO_CUDA_ENABLED)
+	OPTION(NEMO_CUDA_DYNAMIC_LOADING "Load the CUDA backend dynamically" ON)
 	IF(NOT NEMO_CUDA_DYNAMIC_LOADING)
 		LIST(APPEND BACKEND_LIBS "nemo_cuda")
 	ENDIF(NOT NEMO_CUDA_DYNAMIC_LOADING)
+ELSE(NEMO_CUDA_ENABLED)
+	SET(NEMO_CUDA_DYNAMIC_LOADING OFF)
 ENDIF(NEMO_CUDA_ENABLED)
 
 IF(NOT WIN32)
@@ -51,10 +66,10 @@ ADD_LIBRARY(nemo_base
 	NeuronType.cpp
 	Simulation.cpp
 	SimulationBackend.cpp
-	OutgoingDelays.cpp
 	Plugin.cpp
 	ReadableNetwork.cpp
 	RNG.cpp
+	runtime/Delays.cpp
 	runtime/RCM.cpp
 	StdpFunction.cpp
 	StdpProcess.cpp
@@ -78,6 +93,7 @@ INSTALL(FILES
 		Network.hpp
 		Simulation.hpp
 		ReadableNetwork.hpp
+		izhikevich.hpp
 		${CMAKE_CURRENT_BINARY_DIR}/config.h
 	DESTINATION ${INSTALL_INCLUDE_DIR}/nemo
 )

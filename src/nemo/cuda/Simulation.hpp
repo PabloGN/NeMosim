@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <boost/optional.hpp>
 
@@ -39,6 +40,12 @@ namespace nemo {
 	}
 
 	namespace cuda {
+
+		namespace runtime {
+			class Delays;
+		}
+
+		class Parameters;
 
 /*! \namespace nemo::cuda
  *
@@ -229,7 +236,7 @@ class Simulation : public nemo::SimulationBackend
 
 #ifdef NEMO_BRIAN_ENABLED
 		/*! \copydoc nemo::Simulation::propagate */
-		float* propagate(uint32_t*, int nfired);
+		float* propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired);
 #endif
 
 		/*! \copydoc nemo::SimulationBackend::readFiring */
@@ -268,9 +275,6 @@ class Simulation : public nemo::SimulationBackend
 		/*! \copydoc nemo::Simulation::getSynapseWeight */
 		float getSynapseWeight(const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id& synapse) const;
-
 		void finishSimulation();
 
 		/* TIMING */
@@ -290,6 +294,7 @@ class Simulation : public nemo::SimulationBackend
 		Simulation(const network::Generator&, const nemo::ConfigurationImpl&);
 
 		friend SimulationBackend* simulation(const network::Generator& net, const ConfigurationImpl& conf);
+		friend class Parameters;
 
 		Mapper m_mapper;
 
@@ -306,7 +311,12 @@ class Simulation : public nemo::SimulationBackend
 		typedef std::vector< boost::shared_ptr<Neurons> > neuron_groups;
 		neuron_groups m_neurons;
 
-		ConnectivityMatrix m_cm;
+		typedef boost::shared_ptr<ConnectivityMatrix> cm_t;
+		std::vector<cm_t> m_cm;
+
+		/*! For each neuron, record the delays for which there are /any/
+		 * outgoing connections */
+		boost::scoped_ptr<runtime::Delays> md_delays;
 
 		LocalQueue m_lq;
 
@@ -326,22 +336,7 @@ class Simulation : public nemo::SimulationBackend
 		NVector<nidx_dt> m_fired;
 		boost::shared_array<unsigned> md_nFired;
 
-		boost::shared_ptr<param_t> md_params;
-
-		/* Initialise the simulation-wide parameters on the device
-		 *
-		 * All kernels use a single pitch for all 64-, 32-, and 1-bit
-		 * per-neuron data This function sets these common pitches and also
-		 * checks that all relevant arrays have the same pitch.
-		 *
-		 * \param pitch1 pitch of 1-bit per-neuron data
-		 * \param pitch32 pitch of 32-bit per-neuron data
-		 * \param maxDelay maximum delay found in the network
-		 *
-		 * \return device pointer to parameters. The device memory is handled
-		 * 		by this class rather than the caller.
-		 */
-		param_t* setParameters(size_t pitch1, size_t pitch32, unsigned maxDelay);
+		boost::scoped_ptr<Parameters> m_params;
 
 		/* Size of each partition, stored on the device in a single array. */
 		boost::shared_array<unsigned> md_partitionSize;
@@ -350,7 +345,9 @@ class Simulation : public nemo::SimulationBackend
 
 		boost::optional<StdpFunction> m_stdp;
 
+#ifdef NEMO_STDP_ENABLED
 		void configureStdp();
+#endif
 
 		Timer m_timer;
 
@@ -366,6 +363,9 @@ class Simulation : public nemo::SimulationBackend
 		cudaEvent_t m_eventFireDone;
 		cudaEvent_t m_firingStimulusDone;
 		cudaEvent_t m_currentStimulusDone;
+
+		/*! Internal buffer for synapse queries */
+		std::vector<synapse_id> m_queriedSynapseIds;
 };
 
 	} // end namespace cuda

@@ -12,4 +12,6 @@
 #define STATE_U 0
 #define STATE_V 1
 
+#define N_INPUTS 1
+
 #endif

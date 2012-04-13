@@ -38,9 +38,6 @@ class NEMO_BASE_DLL_PUBLIC ReadableNetwork
 		/*! \return weight for a synapse */
 		virtual float getSynapseWeight(const synapse_id&) const = 0;
 
-		/*! \return plasticity status for a synapse */
-		virtual unsigned char getSynapsePlastic(const synapse_id&) const = 0;
-
 		/*! \return
 		 * 		vector of synapse ids for all synapses with the given source
 		 * 		neuron

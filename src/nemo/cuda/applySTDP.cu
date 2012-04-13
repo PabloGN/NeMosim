@@ -37,7 +37,7 @@ void
 applyStdp(
 	unsigned* g_partitionSize,
 	param_t* g_params,
-	synapse_t* g_fcm,
+	fcm_dt g_fcm,
 	rcm_dt g_rcm,
 	weight_dt minExcitatoryWeight,
 	weight_dt maxExcitatoryWeight,
@@ -91,7 +91,7 @@ applyStdp(
 				if(w_diff != 0) {
 					g_rcm.accumulator[r_offset] = 0;
 
-					weight_dt* gf_weight = (weight_dt*) g_fcm + s_params.fcmPlaneSize * FCM_WEIGHT;
+					weight_dt* gf_weight = (weight_dt*) g_fcm.data + g_fcm.planeSize * FCM_WEIGHT;
 
 					weight_dt w_old = gf_weight[f_offset];
 					weight_dt w_new = 0;
@@ -125,7 +125,7 @@ applyStdp(
 		unsigned* d_partitionSize,
 		unsigned fractionalBits,
 		param_t* d_params,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		rcm_dt* d_rcm,
 		float minExcitatoryWeight,
 		float maxExcitatoryWeight,

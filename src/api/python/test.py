@@ -8,10 +8,15 @@ class IzNetwork(nemo.Network):
 
     def __init__(self):
         nemo.Network.__init__(self)
-        self._type = self.add_neuron_type('Izhikevich')
+        self._stype = self.add_synapse_type()
+        self._ntype = self.add_neuron_type('Izhikevich', [self._stype])
 
     def add_neuron(self, nidx, a, b, c, d, sigma, u, v):
-        nemo.Network.add_neuron(self, self._type, nidx, a, b, c, d, sigma, u, v)
+        nemo.Network.add_neuron(self, self._ntype, nidx, a, b, c, d, sigma, u, v)
+
+    def add_synapse(self, source, target, delay, weight):
+        return nemo.Network.add_synapse(self, self._stype, source, target, delay, weight)
+
 
 
 def randomSource():
@@ -25,9 +30,6 @@ def randomDelay():
 
 def randomWeight():
     return random.uniform(-1.0, 1.0)
-
-def randomPlastic():
-    return random.choice([True, False])
 
 def randomParameterIndex():
     return random.randint(0, 4)
@@ -233,8 +235,8 @@ class TestFunctions(unittest.TestCase):
         net = IzNetwork()
         net.add_neuron(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         net.add_neuron(1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-        net.add_synapse(0, 1, 1, 5.0, False)
-        net.add_synapse(1, 0, 1, 5.0, False)
+        net.add_synapse(0, 1, 1, 5.0)
+        net.add_synapse(1, 0, 1, 5.0)
         return (net, nemo.Simulation(net, nemo.Configuration()))
 
     def test_get_neuron_scalar(self):
@@ -279,8 +281,6 @@ class TestFunctions(unittest.TestCase):
             x.get_synapse_delay([0])
             x.get_synapse_weight(0)
             x.get_synapse_weight([0])
-            x.get_synapse_plastic(0)
-            x.get_synapse_plastic([0])
         (net, sim) = self.simple_network()
         check(net)
         check(sim)
@@ -298,9 +298,8 @@ class TestFunctions(unittest.TestCase):
             target = arg(vlen, randomTarget)
             delay = arg(vlen, randomDelay)
             weight = arg(vlen, randomWeight)
-            plastic = arg(vlen, randomPlastic)
-            ids = net.add_synapse(source, target, delay, weight, plastic)
-            vectorized = any(isinstance(n, list) for n in [source, target, delay, weight, plastic])
+            ids = net.add_synapse(source, target, delay, weight)
+            vectorized = any(isinstance(n, list) for n in [source, target, delay, weight])
             if vectorized:
                 self.assertTrue(isinstance(ids, list))
                 self.assertEqual(len(ids), vlen)
@@ -328,9 +327,6 @@ class TestFunctions(unittest.TestCase):
         def delay(source, target):
             return 1 + ((source + target) % 20)
 
-        def plastic(source, target):
-            return (source + target) % 1 == 0
-
         def weight(source, target):
             return float(source) + float(target)
 
@@ -340,7 +336,7 @@ class TestFunctions(unittest.TestCase):
         for src in range(ncount):
             net.add_neuron(src, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
             for tgt in range(src+1):
-                net.add_synapse(src, tgt, delay(src, tgt), weight(src, tgt), plastic(src, tgt))
+                net.add_synapse(src, tgt, delay(src, tgt), weight(src, tgt))
 
         conf = nemo.Configuration()
         sim = nemo.Simulation(net, conf)
@@ -349,7 +345,6 @@ class TestFunctions(unittest.TestCase):
             self.assertEqual(known_source, source)
             self.assertEqual(x.get_synapse_delay(sid), delay(source, target))
             self.assertEqual(x.get_synapse_weight(sid), weight(source, target))
-            self.assertEqual(x.get_synapse_plastic(sid), plastic(source, target))
 
         def check(x):
             for src in range(ncount):

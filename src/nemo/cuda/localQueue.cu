@@ -37,21 +37,21 @@ lq_globalFillOffset(unsigned slot, unsigned maxDelay)
 }
 
 
+
 /*!
  * \param cycle current simulation cycle
  * \param maxDelay maximum delay in the network
  * \param g_fill global memory containing the fill rate for each slot in the local queue.
  *
- * \return queue fill for the current partition slot due for delivery now, and
- * 		reset the relevant slot.
+ * \return queue fill for the current partition slot due for delivery now
  *
  * \see nemo::cuda::LocalQueue
  */
 __device__
 unsigned
-lq_getAndClearCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
+lq_getCurrentFill(unsigned cycle, unsigned maxDelay, unsigned* g_fill)
 {
-	return atomicExch(g_fill + lq_globalFillOffset(cycle % maxDelay, maxDelay), 0);
+	return g_fill[lq_globalFillOffset(cycle % maxDelay, maxDelay)];
 }
 
 

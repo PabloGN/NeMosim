@@ -45,6 +45,27 @@ typedef uint2 outgoing_addr_t;
 /*! Dummy outgoing entry pointing to the invalid null warp (see \ref nemo::cuda::Outgoing::init) */
 const outgoing_t INVALID_OUTGOING = make_uint2(0, 0);
 
+//! \todo make outgoing_t and outgoing_addr_t typedefs inside outgoing_dt
+
+struct outgoing_dt
+{
+	outgoing_dt() : data(0), addr(0), pitch(0), step(0) { }
+
+	outgoing_dt(outgoing_t* data,
+			outgoing_addr_t* addr,
+			size_t pitch,
+			size_t step) :
+		data(data), addr(addr), pitch(pitch), step(step) { }
+
+	outgoing_t* data;
+
+	/*! Number of outgoing spike groups for each neuron */
+	outgoing_addr_t* addr;
+
+	size_t pitch;
+	size_t step;
+};
+
 
 //! \todo make this a template instead
 __host__ __device__

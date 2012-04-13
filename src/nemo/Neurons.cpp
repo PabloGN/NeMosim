@@ -15,11 +15,12 @@
 
 namespace nemo {
 
-Neurons::Neurons(const NeuronType& type) :
+Neurons::Neurons(const NeuronType& type, const std::vector<unsigned>& inputs) :
 	m_param(type.parameterCount()),
 	m_state(type.stateVarCount()),
 	m_size(0),
-	m_type(type)
+	m_type(type),
+	m_inputs(inputs)
 {
 	;
 }

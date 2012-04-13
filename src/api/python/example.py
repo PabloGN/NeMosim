@@ -5,7 +5,7 @@ import random
 import nemo
 
 
-def add_excitatory(net, iz, nidx, ncount, scount, stdp=False):
+def add_excitatory(net, iz, synapse_type, nidx, ncount, scount):
     v = -65.0
     a = 0.02
     b = 0.2
@@ -20,11 +20,11 @@ def add_excitatory(net, iz, nidx, ncount, scount, stdp=False):
     for s in range(scount):
         target = random.randint(0, ncount-1)
         weight = 0.5 * random.random()
-        net.add_synapse(nidx, target, 1, weight, stdp)
+        net.add_synapse(synapse_type, nidx, target, 1, weight)
     return net
 
 
-def add_inhibitory(net, iz, nidx, ncount, scount):
+def add_inhibitory(net, iz, synapse_type, nidx, ncount, scount):
     v = -65.0
     r1 = random.random()
     a = 0.02 + 0.08 * r1
@@ -38,7 +38,7 @@ def add_inhibitory(net, iz, nidx, ncount, scount):
     for s in range(scount):
         target = random.randint(0, ncount-1)
         weight = -random.random()
-        net.add_synapse(nidx, target, 1, weight, False)
+        net.add_synapse(synapse_type, nidx, target, 1, weight)
     return net
 
 
@@ -50,12 +50,13 @@ def construct_random(ncount, scount):
         return nidx < (ncount * 4 / 5)
 
     net = nemo.Network()
-    iz = net.add_neuron_type('Izhikevich')
+    stype = net.add_synapse_type()
+    iz = net.add_neuron_type('Izhikevich', [stype])
     for nidx in range(ncount):
         if is_excitatory(nidx):
-            add_excitatory(net, iz, nidx, ncount, scount)
+            add_excitatory(net, iz, stype, nidx, ncount, scount)
         else:
-            add_inhibitory(net, iz, nidx, ncount, scount)
+            add_inhibitory(net, iz, stype, nidx, ncount, scount)
     return net
 
 

@@ -10,6 +10,7 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "kernel.cu_h"
 
 /*! Global parameters */
 struct param_t {
@@ -19,17 +20,13 @@ struct param_t {
 
 	unsigned maxDelay;
 
-	// per-neuron vector pitches
+	/* per-neuron vector pitches */
 	size_t pitch1;
 	size_t pitch32;
 	size_t pitch64;
 
-	/* Size (in words) of a single plane in the forward connectivity matrix,
-	 * i.e. all of the address data or all of the weights */
-	size_t fcmPlaneSize;
-
-	size_t outgoingPitch;
-	size_t outgoingStep;
+	/* neuron-group specific array of indices of input accumulators */
+	unsigned inputs[MAX_NEURON_INPUTS];
 };
 
 #endif

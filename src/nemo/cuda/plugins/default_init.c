@@ -1,5 +1,6 @@
 #include "neuron_model.h"
 
+
 extern "C"
 NEMO_PLUGIN_DLL_PUBLIC
 cudaError_t

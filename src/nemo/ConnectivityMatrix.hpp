@@ -10,30 +10,30 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <vector>
 #include <map>
 #include <set>
+#include <vector>
 
-#include <boost/tuple/tuple.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/optional.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <nemo/config.h>
 #include <nemo/construction/RCM.hpp>
 #include <nemo/runtime/RCM.hpp>
+#include <nemo/runtime/Delays.hpp>
 
 #include "types.hpp"
 #include "RandomMapper.hpp"
 #include "StdpProcess.hpp"
-#include "OutgoingDelays.hpp"
 
 #define ASSUMED_CACHE_LINE_SIZE 64
 
 namespace nemo {
 
 
-/* The AxonTerminal in types.hpp includes 'plastic' specification. It's not
+/* The AxonTerminal in types.hpp includes 'id' specification. It's not
  * needed here. */
 struct FAxonTerminal
 {
@@ -68,6 +68,10 @@ namespace network {
 	class Generator;
 }
 
+namespace construction {
+	class Delays;
+}
+
 class ConfigurationImpl;
 struct AxonTerminalAux;
 
@@ -77,10 +81,13 @@ struct AxonTerminalAux;
  * accessed at construction time, while others should only be accessed at
  * run-time. This constraint is not enforced by the interface */
 
-/* Generic connectivity matrix
+/*! Generic connectivity matrix
  *
  * Data in this class is organised for optimal cache performance. A
  * user-defined fixed-point format is used.
+ *
+ * The connectivity matrix contains all the synapses of a specific type. A
+ * network may contain more than one synapse type.
  */
 class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 {
@@ -88,16 +95,19 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 
 		typedef RandomMapper<nidx_t> mapper_t;
 
-		/*! Populate runtime CM from existing network.
+		/*! Populate runtime CM for a single synapse type from existing network
 		 *
 		 * The mapper can translate neuron indices (both source and target)
 		 * from one index space to another. All later accesses to the CM data
 		 * are assumed to be in terms of the translated indices.
+		 *
+		 * \pre typeIdx < net->synapseTypeCount()
 		 */
 		ConnectivityMatrix(
 				const network::Generator& net,
 				const ConfigurationImpl& conf,
-				const mapper_t&);
+				const mapper_t&,
+				unsigned typeIdx);
 
 		/*! Add synapse with pre-mapped source and target
 		 *
@@ -107,7 +117,13 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 */
 		sidx_t addSynapse(nidx_t source, nidx_t target, const Synapse&);
 
-		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
+		/*! Get ids of synapses with given presynaptic neuron
+		 *
+		 * \param[in] neuron
+		 * \param[out] vector to be appended to. The vector may already have
+		 * 		entries in it. These will not be touched.
+		 */
+		void getSynapsesFrom(unsigned neuron, std::vector<synapse_id>&) const;
 
 		/*! \return all synapses for a given source and delay */
 		const Row& getRow(nidx_t source, delay_t) const;
@@ -121,10 +137,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/*! \copydoc nemo::Simulation::getWeight */
 		float getWeight(const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getPlastic */
-		unsigned char getPlastic(const synapse_id& synapse) const;
-
-		typedef OutgoingDelays::const_iterator delay_iterator;
+		typedef runtime::Delays::const_iterator delay_iterator;
 
 		/*! \param source
 		 * 		global neuron index of source neuron
@@ -140,27 +153,39 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 */
 		delay_iterator delay_end(nidx_t source) const;
 
-		unsigned fractionalBits() const { return m_fractionalBits; }
-
 		delay_t maxDelay() const { return m_maxDelay; }
 
 		void accumulateStdp(const std::vector<uint64_t>& recentFiring);
 
 		void applyStdp(float reward);
 
-		/*! \return bit-mask indicating the delays at which the given neuron
-		 * has *any* outgoing synapses. If the source neuron is invalid 0 is
-		 * returned.
+		/*! \return vector of bit-masks indicating the delays at which the
+		 * given neuron has *any* outgoing synapses.
 		 *
-		 * Only call this after finalize has been called. */
-		uint64_t delayBits(nidx_t l_source) const { return m_delays.delayBits(l_source); }
+		 * Only call this after finalize has been called.
+		 */
+		const std::vector<uint64_t>& delayBits() const;
 
 		/*! \return pointer to reverse connectivity matrix */
 		const runtime::RCM* rcm() const { return m_rcm.get(); }
 
+		/*! Deliver all spikes currently due
+		 *
+		 * \param cycle current simulation cycle
+		 * \param[in] recentFiring per-neuron bit-vector of recent firing history
+		 * \param[out] accumulator
+		 */
+		void deliverSpikes(unsigned long cycle,
+				const std::vector<uint64_t>& recentFiring,
+				std::vector<float>& accumulator);
+
 	private:
 
+		unsigned m_typeIdx;
+
 		const mapper_t& m_mapper;
+
+		unsigned m_neuronCount;
 
 		unsigned m_fractionalBits;
 
@@ -174,14 +199,13 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		/* At run-time, however, we want a fast lookup of the rows. We
 		 * therefore use a vector with linear addressing.  */
 		std::vector<Row> m_cm;
-		void finalizeForward(const mapper_t&, bool verifySources);
+		void finalizeForward(const mapper_t&, bool verifySources, construction::Delays& delays);
 
 		boost::scoped_ptr<runtime::RCM> m_rcm;
 
 		boost::optional<StdpProcess> m_stdp;
 
-		OutgoingDelaysAcc m_delaysAcc;
-		OutgoingDelays m_delays;
+		boost::scoped_ptr<runtime::Delays> m_delays;
 		delay_t m_maxDelay;
 
 		/*! \return linear index into CM, based on 2D index (neuron,delay) */
@@ -199,9 +223,6 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		 * \param sidx synapse index within synapse groups for given postsynaptic neuron
 		 */
 		fix_t* weight(const RSynapse& rdata, uint32_t sidx) const;
-
-		/* Internal buffers for synapse queries */
-		std::vector<synapse_id> m_queriedSynapseIds;
 
 		/*! \todo We could save both time and space here by doing the same as
 		 * in the cuda backend, namely
@@ -221,6 +242,8 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		const AxonTerminalAux& axonTerminalAux(const synapse_id&) const;
 
 		bool m_writeOnlySynapses;
+
+		std::vector<wfix_t> mfx_accumulator;
 };
 
 
@@ -243,13 +266,12 @@ struct AxonTerminalAux
 	sidx_t idx;
 
 	unsigned delay;
-	bool plastic;
 
-	AxonTerminalAux(sidx_t idx, unsigned delay, bool plastic) :
-		idx(idx), delay(delay), plastic(plastic) { }
+	AxonTerminalAux(sidx_t idx, unsigned delay) :
+		idx(idx), delay(delay) { }
 
 	AxonTerminalAux() :
-		idx(~0), delay(~0), plastic(false) { }
+		idx(~0), delay(~0) { }
 };
 
 

@@ -25,7 +25,7 @@
  * \param[in] g_fired global memory per-neuron vector of fired neuron indices.
  * \param[out] s_nFired number of neurons in this partition which fired this cycle
  * \param[out] s_fired shared memory vector of the relevant neuron indices.
- * 		Only the first \a nFired entries contain valid data.
+ * 		Only the first \a s_nFired entries contain valid data.
  * 
  * \see storeSparseFiring
  */
@@ -55,44 +55,55 @@ loadSparseFiring(unsigned* g_nFired, size_t pitch32, nidx_dt* g_fired, unsigned*
  * details.
  *
  * \param cycle
- * \param nFired number of valid entries in s_fired
- * \param s_fired shared memory buffer containing the recently fired neurons
+ * \param g_nFired number of valid entries in s_fired
+ * \param g_fired shared memory buffer containing the recently fired neurons
  * \param g_delays delay bits for each neuron
  * \param g_lqFill queue fill for local queue
  * \param g_queue global memory for the local queue
  */
 __device__
 void
-scatterLocal(
+scatterLocal_(
 		unsigned cycle,
-		const param_t& s_params,
-		unsigned nFired,
-		const nidx_dt* s_fired,
+		param_t* g_params,
+		unsigned* g_nFired,        // device-only buffer.
+		nidx_dt* g_fired,          // device-only buffer, sparse output. pitch = c_pitch32.
 		unsigned g_ndFill[],
 		delay_dt g_delays[],
 		unsigned g_lqFill[],
 		lq_entry_t g_queue[])
 {
+	__shared__ unsigned s_nFired;
+	__shared__ nidx_dt s_fired[MAX_PARTITION_SIZE];
+	__shared__ param_t s_params;
+
+	loadParameters(g_params, &s_params);
+	loadSparseFiring(g_nFired, s_params.pitch32, g_fired, &s_nFired, s_fired);
 	/* This shared memory vector is quite small, so no need to reuse */
 	__shared__ unsigned s_lqFill[MAX_DELAY];
 
 	lq_loadQueueFill(s_params.maxDelay, g_lqFill, s_lqFill);
+	/* The slot which was emptied in the previous call to scatterGlobal still
+	 * contains garbage. No need to clear it in global memory, however. */
+	if(threadIdx.x == 0) {
+		s_lqFill[(cycle-1) % s_params.maxDelay] = 0;
+	}
 	__syncthreads();
 
 	/*! \todo do more than one neuron at a time. We can deal with
 	 * THREADS_PER_BLOCK/MAX_DELAY per iteration. */
-	for(unsigned bFired = 0; bFired < nFired; bFired+=THREADS_PER_BLOCK) {
+	for(unsigned bFired = 0; bFired < s_nFired; bFired+=THREADS_PER_BLOCK) {
 
 		__shared__ unsigned s_ndFill[THREADS_PER_BLOCK];
 
-		if(bFired + threadIdx.x < nFired) {
+		if(bFired + threadIdx.x < s_nFired) {
 			/* Non-coalesced load: */
 			s_ndFill[threadIdx.x] = nd_loadFill(s_fired[bFired + threadIdx.x], g_ndFill);
 		}
 		__syncthreads();
 
 		for(unsigned iFired = 0;
-				iFired < THREADS_PER_BLOCK && bFired + iFired < nFired;
+				iFired < THREADS_PER_BLOCK && bFired + iFired < s_nFired;
 				++iFired) {
 
 			__shared__ delay_dt s_delays[MAX_DELAY];
@@ -122,6 +133,22 @@ scatterLocal(
 }
 
 
+__global__
+void
+scatterLocal(
+		unsigned cycle,
+		param_t* g_params,
+		unsigned* g_nFired,        // device-only buffer.
+		nidx_dt* g_fired,          // device-only buffer, sparse output. pitch = c_pitch32.
+		unsigned g_ndFill[],
+		delay_dt g_delays[],
+		unsigned g_lqFill[],
+		lq_entry_t g_queue[])
+{
+	scatterLocal_(cycle, g_params, g_nFired, g_fired,
+			g_ndFill, g_delays, g_lqFill, g_queue);
+}
+
 
 /*! Echange spikes between partitions
  *
@@ -130,16 +157,20 @@ scatterLocal(
  */
 __device__
 void
-scatterGlobal(unsigned cycle,
-		const param_t& s_params,
+scatterGlobal_(unsigned cycle,
+		param_t* g_params,
+		// const param_t& s_params,
 		unsigned* g_lqFill,
 		lq_entry_t* g_lq,
-		outgoing_addr_t* g_outgoingAddr,
-		outgoing_t* g_outgoing,
+		//const outgoing_dt& g_outgoing,
+		outgoing_dt g_outgoing,
 		unsigned* g_gqFill,
 		gq_entry_t* g_gqData)
 {
 	__shared__ unsigned s_fill[MAX_PARTITION_COUNT]; // 512
+	__shared__ param_t s_params;
+
+	loadParameters(g_params, &s_params);
 
 	/* Instead of iterating over fired neurons, load all fired data from a
 	 * single local queue entry. Iterate over the neuron/delay pairs stored
@@ -147,7 +178,7 @@ scatterGlobal(unsigned cycle,
 	__shared__ unsigned s_nLq;
 
 	if(threadIdx.x == 0) {
-		s_nLq = lq_getAndClearCurrentFill(cycle, s_params.maxDelay, g_lqFill);
+		s_nLq = lq_getCurrentFill(cycle, s_params.maxDelay, g_lqFill);
 	}
 	__syncthreads();
 
@@ -181,10 +212,10 @@ scatterGlobal(unsigned cycle,
 			/* Outgoing counts is cachable. It is not too large and is runtime
 			 * constant. It is too large for constant memory however. The
 			 * alternatives are thus texture memory or the L1 cache (on Fermi) */
-			outgoing_addr_t addr = outgoingAddr(neuron, delay0, g_outgoingAddr);
+			outgoing_addr_t addr = outgoingAddr(neuron, delay0, g_outgoing.addr);
 			s_offset[threadIdx.x] = addr.x;
 			s_len[threadIdx.x] = addr.y;
-			ASSERT(s_len[threadIdx.x] <= s_params.outgoingPitch);
+			ASSERT(s_len[threadIdx.x] <= g_outgoing.pitch);
 			DEBUG_MSG_SYNAPSE("c%u[global scatter]: dequeued n%u d%u from local queue (%u warps from %u)\n",
 					cycle, neuron, delay0, s_len[threadIdx.x], s_offset[threadIdx.x]);
 		}
@@ -195,11 +226,11 @@ scatterGlobal(unsigned cycle,
 		 * spread in the range of outgoing row lengths (e.g. one extremely long
 		 * one) will adveresly affect performance here. */
 		unsigned jLqMax = min(THREADS_PER_BLOCK, s_nLq-bLq);
-		for(unsigned jbLq = 0; jbLq < jLqMax; jbLq += s_params.outgoingStep) {
+		for(unsigned jbLq = 0; jbLq < jLqMax; jbLq += g_outgoing.step) {
 
 			/* jLq should be in [0, 256) so that we can point to s_len
 			 * e.g.     0,8,16,24,...,248 + 0,1,...,8 */
-			unsigned jLq = jbLq + threadIdx.x / s_params.outgoingPitch;
+			unsigned jLq = jbLq + threadIdx.x / g_outgoing.pitch;
 			ASSERT(jLq < THREADS_PER_BLOCK);
 
 			/* There may be more than THREADS_PER_BLOCK entries in this
@@ -212,13 +243,13 @@ scatterGlobal(unsigned cycle,
 			__syncthreads();
 
 			/* Load row of outgoing data (specific to neuron/delay pair) */
-			unsigned iOut = threadIdx.x % s_params.outgoingPitch;
+			unsigned iOut = threadIdx.x % g_outgoing.pitch;
 			unsigned targetPartition = 0;
 			unsigned warpOffset = 0;
 			unsigned localOffset = 0;
 			bool valid = bLq + jLq < s_nLq && iOut < nOut;
 			if(valid) {
-				outgoing_t sout = g_outgoing[s_offset[jLq] + iOut];
+				outgoing_t sout = g_outgoing.data[s_offset[jLq] + iOut];
 				targetPartition = outgoingTargetPartition(sout);
 				ASSERT(targetPartition < PARTITION_COUNT);
 				warpOffset = outgoingWarpOffset(sout);
@@ -263,10 +294,23 @@ scatterGlobal(unsigned cycle,
 
 __global__
 void
+scatterGlobal(unsigned cycle,
+		param_t* g_params,
+		unsigned* g_lqFill,
+		lq_entry_t* g_lq,
+		outgoing_dt g_outgoing,
+		unsigned* g_gqFill,
+		gq_entry_t* g_gqData)
+{
+	scatterGlobal_(cycle, g_params, g_lqFill, g_lq, g_outgoing, g_gqFill, g_gqData);
+}
+
+
+__global__
+void
 scatter(uint32_t cycle,
 		param_t* g_params,
-		outgoing_addr_t* g_outgoingAddr,
-		outgoing_t* g_outgoing,
+		outgoing_dt g_outgoing,
 		gq_entry_t* g_gqData,      // pitch = c_gqPitch
 		unsigned* g_gqFill,
 		lq_entry_t* g_lqData,      // pitch = c_lqPitch
@@ -276,28 +320,15 @@ scatter(uint32_t cycle,
 		unsigned* g_nFired,        // device-only buffer.
 		nidx_dt* g_fired)          // device-only buffer, sparse output. pitch = c_pitch32.
 {
-	__shared__ unsigned s_nFired;
-	__shared__ nidx_dt s_fired[MAX_PARTITION_SIZE];
-	__shared__ param_t s_params;
-
-	loadParameters(g_params, &s_params);
-	loadSparseFiring(g_nFired, s_params.pitch32, g_fired, &s_nFired, s_fired);
-
-	scatterLocal(cycle, s_params,
-			s_nFired, s_fired,
-			g_ndFill, g_ndData,
-			g_lqFill, g_lqData);
-
-	scatterGlobal(cycle,
-			s_params,
-			g_lqFill, g_lqData,
-			g_outgoingAddr,
-			g_outgoing,
-			g_gqFill, g_gqData);
+	scatterLocal_(cycle, g_params, g_nFired, g_fired,
+			g_ndFill, g_ndData, g_lqFill, g_lqData);
+	scatterGlobal_(cycle, g_params, g_lqFill, g_lqData,
+			g_outgoing, g_gqFill, g_gqData);
 }
 
 
 
+/*! Perform both local and global scatter */
 __host__
 cudaError_t
 scatter(cudaStream_t stream,
@@ -306,8 +337,7 @@ scatter(cudaStream_t stream,
 		param_t* d_globalParameters,
 		unsigned* d_nFired,
 		nidx_dt* d_fired,
-		outgoing_addr_t* d_outgoingAddr,
-		outgoing_t* d_outgoing,
+		const outgoing_dt& d_outgoing,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill,
 		lq_entry_t* d_lqData,
@@ -322,15 +352,61 @@ scatter(cudaStream_t stream,
 			cycle,
 			d_globalParameters,
 			// spike delivery
-			d_outgoingAddr, d_outgoing,
+			d_outgoing,
 			d_gqData, d_gqFill,
 			d_lqData, d_lqFill, 
 			d_ndData, d_ndFill,
 			// firing data
 			d_nFired, d_fired);
-
 	return cudaGetLastError();
 }
+
+
+__host__
+cudaError_t
+scatterLocal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		unsigned* d_nFired,
+		nidx_dt* d_fired,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill,
+		delay_dt d_ndData[],
+		unsigned d_ndFill[])
+{
+	dim3 dimBlock(THREADS_PER_BLOCK);
+	dim3 dimGrid(partitionCount);
+	scatterLocal<<<dimGrid, dimBlock, 0, stream>>>(
+			cycle, d_globalParameters,
+			d_nFired, d_fired,
+			d_ndFill, d_ndData,
+			d_lqFill, d_lqData);
+	return cudaGetLastError();
+}
+
+
+
+__host__
+cudaError_t
+scatterGlobal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		const outgoing_dt& d_outgoing,
+		gq_entry_t* d_gqData,
+		unsigned* d_gqFill,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill)
+{
+	dim3 dimBlock(THREADS_PER_BLOCK);
+	dim3 dimGrid(partitionCount);
+	scatterGlobal<<<dimGrid, dimBlock, 0, stream>>>(
+			cycle, d_globalParameters, d_lqFill, d_lqData,
+			d_outgoing, d_gqFill, d_gqData);
+	return cudaGetLastError();
+}
+
 
 
 #endif

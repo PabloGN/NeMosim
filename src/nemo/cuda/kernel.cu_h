@@ -39,4 +39,11 @@
 
 #define RNG_STATE_COUNT 4
 
+/*! Maximum number of different input types to a single neuron type.
+ *
+ * This could be extended, the only (non-)issue being that the parameter load
+ * reequires more memory accesses.
+ */
+#define MAX_NEURON_INPUTS 32
+
 #endif

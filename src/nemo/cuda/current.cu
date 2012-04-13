@@ -68,40 +68,21 @@ loadCurrentStimulus(
 
 
 
-/*
- * \param pcount
- *		partition count considering \em all neuron types. Note that for some
- *		kernels PARTITION_COUNT refers to this global count, whereas for other
- *		kernels it refers to a local count.
- * \param partition
- *		\em global index of current partition
+/* \return address for a given current accumulator for a given partition
  *
- * \return gmem pointer to accumulated incoming excitatory current
- */
-__device__
-float*
-incomingExcitatory(float* g_base, unsigned /* pcount */, unsigned partition, size_t pitch32)
-{
-	return g_base + partition * pitch32;
-}
-
-
-
-/*
  * \param pcount
- *		partition count considering \em all neuron types. Note that for some
- *		kernels PARTITION_COUNT refers to this global count, whereas for other
- *		kernels it refers to a local count.
+ *		total number of partitions in the network
  * \param partition
- *		\em global index of current partition
-
- * \return gmem pointer to accumulated incoming inhbitory current
+ *		index of partition of interest
+ * \param accIndex
+ *		accumulator index. Accumulators are indexed from 0, and there's
+ *		typically one accumulator per synapse type.
  */
 __device__
 float*
-incomingInhibitory(float* g_base, unsigned pcount, unsigned partition, size_t pitch32)
+accumulator(float* g_base, unsigned pcount, unsigned partition, unsigned accIndex, size_t pitch32)
 {
-	return g_base + (pcount + partition) * pitch32;
+	return g_base + (accIndex * pcount + partition) * pitch32;
 }
 
 

@@ -42,13 +42,12 @@ struct AxonTerminal
 		id32_t id;
 		nidx_t target;
 		float weight;
-		bool plastic;
 
 		AxonTerminal():
-			id(~0), target(~0), weight(0.0f), plastic(false) { }
+			id(~0), target(~0), weight(0.0f) { }
 
-		AxonTerminal(id32_t id, nidx_t t, float w, bool p):
-			id(id), target(t), weight(w), plastic(p) { }
+		AxonTerminal(id32_t id, nidx_t t, float w):
+			id(id), target(t), weight(w) { }
 
 	private :
 #ifdef NEMO_MPI_ENABLED
@@ -59,7 +58,6 @@ struct AxonTerminal
 			ar & id;
 			ar & target;
 			ar & weight;
-			ar & plastic;
 		}
 #endif
 };
@@ -82,8 +80,6 @@ class Synapse
 		id32_t id() const { return terminal.id; }
 
 		nidx_t target() const { return terminal.target; }
-
-		unsigned char plastic() const { return terminal.plastic; }
 
 		float weight() const { return terminal.weight; }
 

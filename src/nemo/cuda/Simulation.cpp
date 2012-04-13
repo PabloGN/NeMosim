@@ -16,7 +16,10 @@
 #include <nemo/exception.hpp>
 #include <nemo/NetworkImpl.hpp>
 #include <nemo/fixedpoint.hpp>
+#include <nemo/cuda/construction/Delays.hpp>
+#include <nemo/cuda/runtime/Delays.hpp>
 
+#include "Parameters.hpp"
 #include "DeviceAssertions.hpp"
 #include "exception.hpp"
 
@@ -78,23 +81,6 @@ mapCompact(const nemo::network::Generator& net, unsigned partitionSize)
 }
 
 
-/*! Verify device memory pitch
- *
- * On the device a number of arrays have exactly the same shape. These share a
- * common pitch parameter. This function verifies that the memory allocation
- * does what we expect.
- */
-void
-checkPitch(size_t found, size_t expected)
-{
-	using boost::format;
-	if(found != 0 && expected != found) {
-		throw nemo::exception(NEMO_CUDA_MEMORY_ERROR,
-				str(format("Pitch mismatch in device memory allocation. Found %u, expected %u")
-					% found % expected));
-	}
-}
-
 
 
 Simulation::Simulation(
@@ -102,12 +88,11 @@ Simulation::Simulation(
 		const nemo::ConfigurationImpl& conf) :
 	m_mapper(mapCompact(net, conf.cudaPartitionSize())),
 	m_conf(conf),
-	m_cm(net, conf, m_mapper),
 	m_lq(m_mapper.partitionCount(), m_mapper.partitionSize(), std::max(1U, net.maxDelay())),
 	m_recentFiring(2, m_mapper.partitionCount(), m_mapper.partitionSize(), false, false),
 	m_firingStimulus(m_mapper.partitionCount()),
 	m_currentStimulus(1, m_mapper.partitionCount(), m_mapper.partitionSize(), true, true),
-	m_current(2, m_mapper.partitionCount(), m_mapper.partitionSize(), false, false),
+	m_current(net.synapseTypeCount(), m_mapper.partitionCount(), m_mapper.partitionSize(), false, false),
 	m_firingBuffer(m_mapper),
 	m_fired(1, m_mapper.partitionCount(), m_mapper.partitionSize(), false, false),
 	md_nFired(d_array<unsigned>(m_mapper.partitionCount(), true, "Fired count")),
@@ -121,7 +106,7 @@ Simulation::Simulation(
 	using boost::format;
 
 	size_t pitch1 = m_firingBuffer.wordPitch();
-	size_t pitch32 = m_current.wordPitch();
+	size_t pitch32 = m_currentStimulus.wordPitch();
 
 	/* Populate all neuron collections */
 	std::vector<unsigned> h_partitionSize;
@@ -143,6 +128,14 @@ Simulation::Simulation(
 	h_partitionSize.resize(MAX_PARTITION_COUNT, 0); // extend
 	memcpyToDevice(md_partitionSize.get(), h_partitionSize);
 
+	construction::Delays h_delays(m_mapper.partitionCount());
+
+	for(unsigned typeIdx=0; typeIdx < net.synapseTypeCount(); ++typeIdx) {
+		m_cm.push_back(cm_t(new ConnectivityMatrix(net, conf, m_mapper, typeIdx, h_delays)));
+	}
+	md_delays.reset(new runtime::Delays(h_delays));
+
+#ifdef NEMO_STDP_ENABLED
 	if(m_stdp) {
 		if(m_cm.maxDelay() > 64) {
 			throw nemo::exception(NEMO_INVALID_INPUT,
@@ -151,7 +144,14 @@ Simulation::Simulation(
 		}
 		configureStdp();
 	}
-	param_t* d_params = setParameters(pitch1, pitch32, net.maxDelay());
+#else
+	if(m_stdp) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "CUDA backend does not support STDP");
+	}
+#endif
+
+	m_params.reset(new Parameters(*this, conf.fractionalBits(), pitch1, pitch32, net.maxDelay()));
+	m_params->copyToDevice();
 	resetTimer();
 
 	CUDA_SAFE_CALL(cudaStreamCreate(&m_streamCompute));
@@ -162,14 +162,16 @@ Simulation::Simulation(
 
 	//! \todo do m_cm size reporting here as well
 	if(conf.loggingEnabled()) {
-		std::cout << "\tLocal queue: " << m_lq.allocated() / (1<<20) << "MB\n";
+		const size_t MEGA = 1<<20;
+		std::cout << "\tLocal queue: " << m_lq.allocated() / MEGA << "MB\n";
+		std::cout << "\tdelays: " << md_delays->allocated() / MEGA << "MB\n";
 	}
 
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
-		runKernel((*i)->initHistory(
+		runKernel((*i)->init(
 				m_mapper.partitionCount(),
-				d_params,
+				*m_params,
 				md_partitionSize.get()));
 	}
 }
@@ -183,6 +185,7 @@ Simulation::~Simulation()
 
 
 
+#ifdef NEMO_STDP_ENABLED
 void
 Simulation::configureStdp()
 {
@@ -204,6 +207,7 @@ Simulation::configureStdp()
 			m_stdp->depressionBits(),
 			const_cast<fix_t*>(&fxfn[0])));
 }
+#endif
 
 
 
@@ -267,48 +271,23 @@ Simulation::setCurrentStimulus(const std::vector<float>& current)
 size_t
 Simulation::d_allocated() const
 {
-	size_t nsz = 0;
+	size_t sz = 0;
 	for(neuron_groups::const_iterator i = m_neurons.begin();
 			i != m_neurons.end(); ++i) {
-		nsz += (*i)->d_allocated();
+		sz += (*i)->d_allocated();
 	}
 
-	return m_firingStimulus.d_allocated()
+	for(std::vector<cm_t>::const_iterator i = m_cm.begin(); i != m_cm.end(); ++i) {
+		sz += (*i)->d_allocated();
+	}
+
+	return sz
+		+ md_delays->allocated()
+		+ m_firingStimulus.d_allocated()
 		+ m_currentStimulus.d_allocated()
 		+ m_recentFiring.d_allocated()
-		+ nsz
-		+ m_firingBuffer.d_allocated()
-		+ m_cm.d_allocated();
+		+ m_firingBuffer.d_allocated();
 }
-
-
-param_t*
-Simulation::setParameters(size_t pitch1, size_t pitch32, unsigned maxDelay)
-{
-	param_t params;
-
-	/* Need a max of at least 1 in order for local queue to be non-empty */
-	params.maxDelay = std::max(1U, maxDelay);
-	params.pitch1 = pitch1;
-	params.pitch32 = pitch32;
-	params.pitch64 = m_recentFiring.wordPitch();
-	checkPitch(m_currentStimulus.wordPitch(), params.pitch32);
-	checkPitch(m_firingBuffer.wordPitch(), params.pitch1);
-	checkPitch(m_firingStimulus.wordPitch(), params.pitch1);;
-
-	unsigned fbits = m_cm.fractionalBits();
-	params.fixedPointScale = 1 << fbits;
-	params.fixedPointFractionalBits = fbits;
-
-	m_cm.setParameters(&params);
-
-	void* d_ptr;
-	d_malloc(&d_ptr, sizeof(param_t), "Global parameters");
-	md_params = boost::shared_ptr<param_t>(static_cast<param_t*>(d_ptr), d_free);
-	memcpyBytesToDevice(d_ptr, &params, sizeof(param_t));
-	return md_params.get();
-}
-
 
 
 
@@ -337,16 +316,16 @@ Simulation::prefire()
 {
 	initLog();
 
-	runKernel(::gather(
-			m_streamCompute,
-			m_timer.elapsedSimulation(),
-			m_mapper.partitionCount(),
-			md_partitionSize.get(),
-			md_params.get(),
-			m_current.deviceData(),
-			m_cm.d_fcm(),
-			m_cm.d_gqData(),
-			m_cm.d_gqFill()));
+	unsigned i = 0;
+	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm, ++i) {
+		runKernel((*cm)->gather(
+				m_streamCompute,
+				m_timer.elapsedSimulation(),
+				m_mapper.partitionCount(),
+				md_partitionSize.get(),
+				m_params->d_data(),
+				m_current.deviceData(i)));
+	}
 }
 
 
@@ -363,7 +342,6 @@ Simulation::fire()
 				m_streamCompute,
 				m_timer.elapsedSimulation(),
 				m_mapper.partitionCount(),
-				md_params.get(),
 				md_partitionSize.get(),
 				m_firingStimulus.d_buffer(),
 				md_istim,
@@ -371,7 +349,10 @@ Simulation::fire()
 				m_firingBuffer.d_buffer(),
 				md_nFired.get(),
 				m_fired.deviceData(),
-				m_cm.d_rcm()));
+				NULL
+#warning "Kuramoto plugin will not work"
+				// m_cm.d_rcm()
+				));
 	}
 	cudaEventRecord(m_eventFireDone, m_streamCompute);
 }
@@ -381,39 +362,50 @@ Simulation::fire()
 void
 Simulation::postfire()
 {
-	runKernel(::scatter(
+	//! \todo optimise for case where there is just a single current
+	runKernel(::scatterLocal(
 			m_streamCompute,
 			m_timer.elapsedSimulation(),
 			m_mapper.partitionCount(),
-			md_params.get(),
-			// firing buffers
+			m_params->d_data(),
 			md_nFired.get(),
 			m_fired.deviceData(),
-			// outgoing
-			m_cm.d_outgoingAddr(),
-			m_cm.d_outgoing(),
-			m_cm.d_gqData(),
-			m_cm.d_gqFill(),
-			// local spike delivery
 			m_lq.d_data(),
 			m_lq.d_fill(),
-			m_cm.d_ndData(),
-			m_cm.d_ndFill()
-		));
+			md_delays->d_data(),
+			md_delays->d_fill()
+	));;
 
+	for(std::vector<cm_t>::const_iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm) {
+		runKernel(::scatterGlobal(
+				m_streamCompute,
+				m_timer.elapsedSimulation(),
+				m_mapper.partitionCount(),
+				m_params->d_data(),
+				(*cm)->d_outgoing(),
+				(*cm)->d_gqData(),
+				(*cm)->d_gqFill(),
+				m_lq.d_data(),
+				m_lq.d_fill()
+			));
+	}
+
+
+#ifdef NEMO_STDP_ENABLED
 	if(m_stdp) {
 		runKernel(::updateStdp(
 			m_streamCompute,
 			m_timer.elapsedSimulation(),
 			m_mapper.partitionCount(),
 			md_partitionSize.get(),
-			md_params.get(),
+			m_params->d_data(),
 			m_cm.d_rcm(),
 			m_recentFiring.deviceData(),
 			m_firingBuffer.d_buffer(),
 			md_nFired.get(),
 			m_fired.deviceData()));
 	}
+#endif
 
 	cudaEventSynchronize(m_eventFireDone);
 	m_firingBuffer.sync(m_streamCopy);
@@ -434,12 +426,12 @@ Simulation::postfire()
 #ifdef NEMO_BRIAN_ENABLED
 
 float*
-Simulation::propagate(uint32_t* d_fired, int nfired)
+Simulation::propagate(unsigned synapseTypeIdx, uint32_t* d_fired, int nfired)
 {
 	assert_or_throw(!m_stdp, "Brian-specific function propagate only well-defined when STDP is not enabled");
 	runKernel(::compact(m_streamCompute,
 				md_partitionSize.get(),
-				md_params.get(),
+				m_params->d_data(),
 				m_mapper.partitionCount(),
 				d_fired,
 				md_nFired.get(),
@@ -461,6 +453,7 @@ Simulation::propagate(uint32_t* d_fired, int nfired)
 void
 Simulation::applyStdp(float reward)
 {
+#ifdef NEMO_STDP_ENABLED
 	using boost::format;
 
 	if(!m_stdp) {
@@ -485,7 +478,7 @@ Simulation::applyStdp(float reward)
 				m_mapper.partitionCount(),
 				md_partitionSize.get(),
 				fbits,
-				md_params.get(),
+				m_params->d_data(),
 				m_cm.d_fcm(),
 				m_cm.d_rcm(),
 				m_stdp->minExcitatoryWeight(),
@@ -498,6 +491,7 @@ Simulation::applyStdp(float reward)
 	}
 
 	m_deviceAssertions.check(m_timer.elapsedSimulation());
+#endif
 }
 
 
@@ -515,7 +509,11 @@ Simulation::setNeuron(unsigned h_neuron, unsigned nargs, const float args[])
 const std::vector<synapse_id>&
 Simulation::getSynapsesFrom(unsigned neuron)
 {
-	return m_cm.getSynapsesFrom(neuron);
+	m_queriedSynapseIds.clear();
+	for(std::vector<cm_t>::iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm){
+		(*cm)->getSynapsesFrom(neuron, m_queriedSynapseIds);
+	}
+	return m_queriedSynapseIds;
 }
 
 
@@ -523,7 +521,7 @@ Simulation::getSynapsesFrom(unsigned neuron)
 unsigned
 Simulation::getSynapseTarget(const synapse_id& synapse) const
 {
-	return m_cm.getTarget(synapse);
+	return m_cm.at(typeIndex(synapse))->getTarget(synapse);
 }
 
 
@@ -531,7 +529,7 @@ Simulation::getSynapseTarget(const synapse_id& synapse) const
 unsigned
 Simulation::getSynapseDelay(const synapse_id& synapse) const
 {
-	return m_cm.getDelay(synapse);
+	return m_cm.at(typeIndex(synapse))->getDelay(synapse);
 }
 
 
@@ -539,15 +537,7 @@ Simulation::getSynapseDelay(const synapse_id& synapse) const
 float
 Simulation::getSynapseWeight(const synapse_id& synapse) const
 {
-	return m_cm.getWeight(elapsedSimulation(), synapse);
-}
-
-
-
-unsigned char
-Simulation::getSynapsePlastic(const synapse_id& synapse) const
-{
-	return m_cm.getPlastic(synapse);
+	return m_cm.at(typeIndex(synapse))->getWeight(elapsedSimulation(), synapse);
 }
 
 
@@ -653,7 +643,7 @@ Simulation::resetTimer()
 unsigned
 Simulation::getFractionalBits() const
 {
-	return m_cm.fractionalBits();
+	return m_conf.fractionalBits();
 }
 
 

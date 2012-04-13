@@ -29,7 +29,9 @@ namespace nemo {
 
 	namespace cpu {
 
-class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
+class NEMO_CPU_DLL_PUBLIC Simulation :
+	public nemo::SimulationBackend,
+	public boost::noncopyable
 {
 	public:
 
@@ -66,7 +68,7 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 #ifdef NEMO_BRIAN_ENABLED
 		/*! \copydoc nemo::Simulation::propagate */
-		float* propagate(uint32_t*, int nfired);
+		float* propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired);
 #endif
 
 		/*! \copydoc nemo::SimulationBackend::readFiring */
@@ -105,9 +107,6 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		/*! \copydoc nemo::Simulation::getSynapseWeight */
 		float getSynapseWeight(const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id& synapse) const;
-
 		/*! \copydoc nemo::Simulation::elapsedWallclock */
 		unsigned long elapsedWallclock() const;
 
@@ -124,10 +123,10 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		RandomMapper<nidx_t> m_mapper;
 
-		typedef std::vector<fix_t> current_vector_t;
-
 		//! \todo can we get rid of this?
 		size_t m_neuronCount;
+
+		unsigned m_fractionalBits;
 
 		/* last cycles firing, one entry per neuron */
 		std::vector<unsigned> m_fired;
@@ -135,19 +134,19 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 		/* last 64 cycles worth of firing, one entry per neuron */
 		std::vector<uint64_t> m_recentFiring;
 
-		/* bit-mask containing delays at which neuron has *any* outoing
-		 * synapses */
-		std::vector<uint64_t> m_delays;
+		typedef boost::shared_ptr<nemo::ConnectivityMatrix> cm_t;
+		std::vector<cm_t> m_cm;
 
-		boost::scoped_ptr<nemo::ConnectivityMatrix> m_cm;
+		/*! Per-neuron accumulators for different synapse types */
+		std::vector< std::vector<float> > m_accumulator;
 
-		/* Per-neuron accumulated current from EPSPs */
-		std::vector<wfix_t> mfx_currentE;
-		std::vector<float> m_currentE;
-
-		/* Per-neuron accumulated current from IPSPs */
-		std::vector<wfix_t> mfx_currentI;
-		std::vector<float> m_currentI;
+		/*! Mapping from neuron type to the set of accumulators used by that
+		 * neuron type. Each entry in \a m_accumulatorPointers points to an
+		 * entry (i.e. the contents of a whole vector) in \a m_accumulator.
+		 *
+		 * The use of pointers relies on the sim object not being moved.
+		 */
+		std::vector< std::vector<float*> > m_accumulatorPointers;
 
 		/* Per-neuron user-provided input current */
 		std::vector<float> m_currentExt;
@@ -161,7 +160,7 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		/*! Deliver spikes due for delivery.
 		 *
-		 * Updates m_currentE and m_currentI
+		 * Updates all accumulators in m_accumulator.
 		 */
 		void deliverSpikes();
 
@@ -169,12 +168,12 @@ class NEMO_CPU_DLL_PUBLIC Simulation : public nemo::SimulationBackend
 
 		FiringBuffer m_firingBuffer;
 
-		void deliverSpikesOne(nidx_t source, delay_t delay);
-
 		Timer m_timer;
 
 		nidx_t validLocalIndex(unsigned g_idx) const;
 
+		/* Internal buffers for synapse queries */
+		std::vector<synapse_id> m_queriedSynapseIds;
 };
 
 

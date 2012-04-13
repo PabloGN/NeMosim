@@ -13,24 +13,27 @@ class OscillatorNetwork : public nemo::Network
 	public :
 
 		OscillatorNetwork() {
-			m_type = addNeuronType("Kuramoto");
+			m_stype = addSynapseType();
+			m_ntype = addNeuronType("Kuramoto", 1, &m_stype);
+
 		}
 
 		void add(unsigned idx, float frequency, float phase) {
 			static float args[2];
 			args[0] = frequency;
 			args[1] = phase;
-			addNeuron(m_type, idx, 2, args);
+			addNeuron(m_ntype, idx, 2, args);
 		}
 
 		void connect(unsigned source, unsigned target,
 				unsigned lag, float strength) {
-			addSynapse(source, target, lag, strength, false);
+			addSynapse(m_stype, source, target, lag, strength);
 		}
 
 	private :
 
-		unsigned m_type;
+		unsigned m_ntype;
+		unsigned m_stype;
 };
 
 

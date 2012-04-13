@@ -95,6 +95,8 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		 * This function is intended for integration with Brian.
 		 * The neuron state is unaffected by calls to \a propagate
 		 *
+		 * \param synapseTypeIdx
+		 * 		synapse type index, as returned by \a addSynapseType
 		 * \param fired pointer (wrapped in size_t) which is either a
 		 * 		non-compact array of fired neurons stored on a CUDA device with
 		 * 		on uint32_t per neuron or a pointer ot a compact array of fired
@@ -107,7 +109,7 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		 * 		either to device or host memory, depending on the type of
 		 * 		\a fired.
 		 */
-		virtual float* propagate(uint32_t* fired, int nfired) = 0;
+		virtual float* propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired) = 0;
 #endif
 
 
@@ -129,14 +131,6 @@ class NEMO_BASE_DLL_PUBLIC Simulation : public ReadableNetwork
 		 * 		added.
 		 */
 		virtual void setNeuron(unsigned idx, unsigned nargs, const float args[]) = 0;
-
-		/*! Change an existing Izhikevich neuron.
-		 *
-		 * \see nemo::Network::addNeuron for parameters
-		 */
-		void setNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
 
 		/*! \copydoc nemo::Network::setNeuronState */
 		virtual void setNeuronState(unsigned neuron, unsigned var, float value) = 0;

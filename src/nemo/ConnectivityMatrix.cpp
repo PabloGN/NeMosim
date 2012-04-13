@@ -11,17 +11,38 @@
 
 #include <algorithm>
 #include <utility>
-#include <stdlib.h>
+#include <cstdlib>
 
-#include <boost/tuple/tuple_comparison.hpp>
 #include <boost/format.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include <nemo/config.h>
+
+#ifdef NEMO_CPU_OPENMP_ENABLED
+#include <omp.h>
+#endif
+
+#include <nemo/bitops.h>
+#include <nemo/construction/Delays.hpp>
 #include <nemo/network/Generator.hpp>
 #include "ConfigurationImpl.hpp"
 #include "exception.hpp"
 #include "fixedpoint.hpp"
 #include "synapse_indices.hpp"
+
+
+#ifdef NEMO_CPU_DEBUG_TRACE
+
+#include <cstdio>
+
+#define LOG(...) fprintf(stdout, __VA_ARGS__);
+
+#else
+
+#define LOG(...)
+
+#endif
 
 
 namespace nemo {
@@ -65,39 +86,52 @@ insert(size_t idx, const T& val, std::vector<T>& vec)
 ConnectivityMatrix::ConnectivityMatrix(
 		const network::Generator& net,
 		const ConfigurationImpl& conf,
-		const mapper_t& mapper) :
+		const mapper_t& mapper,
+		unsigned typeIdx) :
+	m_typeIdx(typeIdx),
 	m_mapper(mapper),
+	m_neuronCount(mapper.maxLocalIdx() + 1),
 	m_fractionalBits(conf.fractionalBits()),
 	m_maxDelay(0),
-	m_writeOnlySynapses(conf.writeOnlySynapses())
+	m_writeOnlySynapses(conf.writeOnlySynapses()),
+	mfx_accumulator(m_neuronCount, 0U)
 {
 	if(conf.stdpFunction()) {
 		m_stdp = StdpProcess(conf.stdpFunction().get(), m_fractionalBits);
 	}
 
-	construction::RCM<nidx_t, RSynapse, 32> m_racc(conf, net, RSynapse(~0U,0));
-	network::synapse_iterator i = net.synapse_begin();
-	network::synapse_iterator i_end = net.synapse_end();
+	construction::RCM<nidx_t, RSynapse, 32> racc(conf, net, RSynapse(~0U,0));
+
+	network::synapse_iterator i = net.synapse_begin(typeIdx);
+	network::synapse_iterator i_end = net.synapse_end(typeIdx);
 
 	for( ; i != i_end; ++i) {
 		nidx_t source = mapper.localIdx(i->source);
 		nidx_t target = mapper.localIdx(i->target());
 		sidx_t sidx = addSynapse(source, target, *i);
-		m_racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
+		racc.addSynapse(target, RSynapse(source, i->delay), *i, sidx);
 	}
 
-	//! \todo avoid two passes here
-	bool verifySources = true;
-	finalizeForward(mapper, verifySources);
-	m_rcm.reset(new runtime::RCM(m_racc));
+	{
+		//! \todo avoid two passes here
+		bool verifySources = true;
+		construction::Delays delays;
+		finalizeForward(mapper, verifySources, delays);
+		m_delays.reset(new runtime::Delays(m_neuronCount, delays));
+	}
+	m_rcm.reset(new runtime::RCM(racc));
 }
 
 
 
 sidx_t
-ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
+ConnectivityMatrix::addSynapse(
+		nidx_t source,
+		nidx_t target,
+		const Synapse& s)
 {
 	delay_t delay = s.delay;
+	m_maxDelay = std::max(m_maxDelay, delay);
 	fix_t weight = fx_toFix(s.weight(), m_fractionalBits);
 
 	fidx_t fidx(source, delay);
@@ -105,15 +139,12 @@ ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
 	sidx_t sidx = row.size();
 	row.push_back(FAxonTerminal(target, weight));
 
-	//! \todo could do this on finalize pass, since there are fewer steps there
-	m_delaysAcc.addDelay(source, delay);
-
 	if(!m_writeOnlySynapses) {
 		/* The auxillary synapse maps always uses the global (user-specified)
 		 * source and target neuron ids, since it's used for lookups basd on
 		 * these global ids */
 		aux_row& auxRow = m_cmAux[s.source];
-		insert(s.id(), AxonTerminalAux(sidx, delay, s.plastic() != 0), auxRow);
+		insert(s.id(), AxonTerminalAux(sidx, delay), auxRow);
 	}
 	return sidx;
 }
@@ -122,12 +153,11 @@ ConnectivityMatrix::addSynapse(nidx_t source, nidx_t target, const Synapse& s)
 
 /* The fast lookup is indexed by source and delay. */
 void
-ConnectivityMatrix::finalizeForward(const mapper_t& mapper, bool verifySources)
+ConnectivityMatrix::finalizeForward(
+		const mapper_t& mapper,
+		bool verifySources,
+		construction::Delays& delays)
 {
-	m_maxDelay = m_delaysAcc.maxDelay();
-	m_delays.init(m_delaysAcc);
-	m_delaysAcc.clear();
-
 	if(m_acc.empty()) {
 		return;
 	}
@@ -150,6 +180,7 @@ ConnectivityMatrix::finalizeForward(const mapper_t& mapper, bool verifySources)
 
 			std::map<fidx_t, row_t>::const_iterator row = m_acc.find(fidx_t(n, d));
 			if(row != m_acc.end()) {
+				delays.addDelay(n, d);
 				verifySynapseTerminals(row->first, row->second, mapper, verifySources);
 				m_cm.at(addressOf(n,d)) = Row(row->second);
 			} else {
@@ -295,8 +326,10 @@ ConnectivityMatrix::applyStdp(float reward)
 
 
 
-const std::vector<synapse_id>&
-ConnectivityMatrix::getSynapsesFrom(unsigned source)
+void
+ConnectivityMatrix::getSynapsesFrom(
+		unsigned source,
+		std::vector<synapse_id>& queriedSynapseIds) const
 {
 	using boost::format;
 
@@ -321,13 +354,12 @@ ConnectivityMatrix::getSynapsesFrom(unsigned source)
 		nSynapses = iRow->second.size();
 	}
 
-	m_queriedSynapseIds.resize(nSynapses);
+	size_t bSynapse = queriedSynapseIds.size();
+	queriedSynapseIds.resize(bSynapse + nSynapses);
 
 	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		m_queriedSynapseIds[iSynapse] = make_synapse_id(source, iSynapse);
+		queriedSynapseIds[bSynapse + iSynapse] = make_synapse_id(source, m_typeIdx, iSynapse);
 	}
-
-	return m_queriedSynapseIds;
 }
 
 
@@ -393,18 +425,10 @@ ConnectivityMatrix::getDelay(const synapse_id& id) const
 
 
 
-unsigned char
-ConnectivityMatrix::getPlastic(const synapse_id& id) const
-{
-	return axonTerminalAux(id).plastic;
-}
-
-
-
 ConnectivityMatrix::delay_iterator
 ConnectivityMatrix::delay_begin(nidx_t source) const
 {
-	return m_delays.begin(source);
+	return m_delays->begin(source);
 }
 
 
@@ -412,8 +436,62 @@ ConnectivityMatrix::delay_begin(nidx_t source) const
 ConnectivityMatrix::delay_iterator
 ConnectivityMatrix::delay_end(nidx_t source) const
 {
-	return m_delays.end(source);
+	return m_delays->end(source);
 }
+
+
+
+const std::vector<uint64_t>&
+ConnectivityMatrix::delayBits() const
+{
+	return m_delays->delayBits();
+}
+
+
+
+void
+ConnectivityMatrix::deliverSpikes(
+		unsigned long cycle,
+		const std::vector<uint64_t>& recentFiring,
+		std::vector<float>& accumulator)
+{
+	/* Ignore spikes outside of max delay. We keep these older spikes as they
+	 * may be needed for STDP */
+	uint64_t validSpikes = ~(((uint64_t) (~0)) << maxDelay());
+	const std::vector<uint64_t> delays = delayBits();
+
+	//! \todo move the whole loop into separate function, then a loadable module
+	for(size_t source=0; source < m_neuronCount; ++source) {
+
+		uint64_t f = recentFiring[source] & validSpikes & delays[source];
+
+		int delay = 0;
+		while(f) {
+			int shift = 1 + ctz64(f);
+			delay += shift;
+			f = f >> shift;
+			const Row& row = getRow(source, delay);
+
+			for(unsigned s=0; s < row.len; ++s) {
+				const FAxonTerminal& terminal = row[s];
+				mfx_accumulator.at(terminal.target) += terminal.weight;
+				LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
+						cycle,
+						m_mapper.globalIdx(source),
+						m_mapper.globalIdx(terminal.target),
+						fx_toFloat(terminal.weight, m_fractionalBits), delay);
+			}
+		}
+	}
+
+	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
+#pragma omp parallel for default(shared)
+	for(int n=0; n < ncount; n++) {
+		accumulator[n] = wfx_toFloat(mfx_accumulator[n], m_fractionalBits);
+		mfx_accumulator[n] = 0U;
+	}
+}
+
 
 
 } // namespace nemo

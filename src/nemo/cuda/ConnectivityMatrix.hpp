@@ -17,17 +17,18 @@
 #include <vector>
 #include <deque>
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 
 #include <nemo/types.hpp>
+#include <nemo/Plugin.hpp>
 #include <nemo/network/Generator.hpp>
+#include <nemo/cuda/plugins/synapse_model.h>
 #include <nemo/cuda/runtime/RCM.hpp>
-#include <nemo/cuda/runtime/Delays.hpp>
 
 #include "types.h"
 #include "kernel.cu_h"
+#include "fcm.cu_h"
 #include "Mapper.hpp"
 #include "Outgoing.hpp"
 #include "GlobalQueue.hpp"
@@ -45,9 +46,6 @@ namespace nemo {
 
 		namespace construction {
 			class FcmIndex;
-		}
-
-		namespace runtime {
 			class Delays;
 		}
 
@@ -105,15 +103,24 @@ class ConnectivityMatrix
 {
 	public:
 
+		/* Create a fully population connectivity matrix
+		 *
+		 * \param delays
+		 * 		Mapping from neurons to delays. This is added to as a
+		 * 		side-effect of construction the CM.
+		 *
+		 */
 		ConnectivityMatrix(
 				const nemo::network::Generator&,
 				const nemo::ConfigurationImpl&,
-				const Mapper&);
+				const Mapper&,
+				const synapse_type& typeIdx,
+				nemo::cuda::construction::Delays& delays);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
-		/*! \copydoc nemo::Simulation::getSynapsesFrom */
-		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
+		/*! \copydoc nemo::ConnectivitMatrix::getSynapsesFrom */
+		void getSynapsesFrom(unsigned neuron, std::vector<synapse_id>&) const;
 
 		/*! \copydoc nemo::Simulation::getSynapseTarget */
 		unsigned getTarget(const synapse_id& synapse) const;
@@ -127,23 +134,13 @@ class ConnectivityMatrix
 		 */
 		float getWeight(cycle_t cycle, const synapse_id& synapse) const;
 
-		/*! \copydoc nemo::Simulation::getSynapsePlastic */
-		unsigned char getPlastic(const synapse_id& synapse) const;
-
 		/*! Clear one plane of connectivity matrix on the device */
 		void clearStdpAccumulator();
 
 		size_t d_allocated() const;
 
-		synapse_t* d_fcm() const { return md_fcm.get(); }
-
-		/*! \return pointer to device data containing outgoing spike data for
-		 * each neuron */
-		outgoing_t* d_outgoing() const { return m_outgoing.d_data(); }
-
-		/*! \return pointer to device data containing the number of outgoing
-		 * spike groups for each neuron */
-		outgoing_addr_t* d_outgoingAddr() const { return m_outgoing.d_addr(); }
+		/*! \return struct containing all Outgoing data needed by kernel */
+		const outgoing_dt& d_outgoing() const { return m_outgoing.d_data(); }
 
 		/*! \copydoc nemo::cuda::GlobalQueue::d_data */
 		gq_entry_t* d_gqData() const { return m_gq.d_data(); }
@@ -151,29 +148,32 @@ class ConnectivityMatrix
 		/*! \copydoc nemo::cuda::GlobalQueue::d_fill */
 		unsigned* d_gqFill() const { return m_gq.d_fill(); }
 
-		/*! \return number of fractional bits used for weights. */
-		unsigned fractionalBits() const { return m_fractionalBits; }
-
 		void printMemoryUsage(std::ostream&) const;
-
-		delay_dt* d_ndData() const { return md_delays->d_data(); }
-
-		unsigned* d_ndFill() const { return md_delays->d_fill(); }
-
-		/*! Fill in all relevant fields in global parameters data structure */
-		void setParameters(param_t*) const;
 
 		/*! \return RCM device pointers */
 		rcm_dt* d_rcm() { return md_rcm.d_rcm(); }
 
+		cudaError_t gather(
+			cudaStream_t stream,
+			unsigned cycle,
+			unsigned partitionCount,
+			unsigned* d_partitionSize,
+			param_t* d_globalParameters,
+			float* d_current);
+
 	private:
+
+		unsigned m_typeIdx;
 
 		const Mapper& m_mapper;
 
 		delay_t m_maxDelay;
 
 		/*! Compact forward connectivity matrix on device */
-		boost::shared_ptr<synapse_t> md_fcm;
+		size_t md_fcmPlaneSize; // in words
+		size_t md_fcmAllocated; // in bytes
+		boost::shared_ptr<synapse_t> md_fcmData;
+		fcm_dt md_fcm;
 
 		/*! Compact reverse connectivity matrix on device */
 		runtime::RCM md_rcm;
@@ -187,16 +187,10 @@ class ConnectivityMatrix
 		const std::vector<weight_dt>& syncWeights(cycle_t) const;
 		mutable cycle_t m_lastWeightSync;
 
-		size_t md_fcmPlaneSize; // in words
-		size_t md_fcmAllocated; // in bytes
 
 		void moveFcmToDevice(size_t totalWarps,
 				const std::vector<synapse_t>& h_targets,
 				const std::vector<weight_dt>& h_weights);
-
-		/*! For each neuron, record the delays for which there are /any/
-		 * outgoing connections */
-		boost::scoped_ptr<runtime::Delays> md_delays;
 
 		/* For spike delivery we need to keep track of all target partitions
 		 * for each neuron */
@@ -229,9 +223,6 @@ class ConnectivityMatrix
 		std::map<nidx_t, unsigned> m_synapsesPerNeuron;
 #endif
 
-		/*! Internal buffer for synapse queries */
-		std::vector<synapse_id> m_queriedSynapseIds;
-
 		/*! Add synapse to forward matrix
 		 *
 		 * \return synapse address, i.e. full word offset into FCM
@@ -250,6 +241,11 @@ class ConnectivityMatrix
 		void verifySynapseTerminals(const aux_map&, const Mapper& mapper);
 
 		const AxonTerminalAux& axonTerminalAux(const synapse_id& id) const;
+
+		/* The gather function itself is found in a plugin which is loaded
+		 * dynamically */
+		Plugin m_plugin;
+		cuda_gather_t* m_gather;
 };
 
 
@@ -262,14 +258,13 @@ class AxonTerminalAux
 
 		unsigned target() const { return m_target; }
 		unsigned delay() const { return m_delay; }
-		unsigned char plastic() const { return (unsigned char) m_plastic; }
 		size_t addr() const { return m_addr; }
 
 		AxonTerminalAux(const Synapse& s, size_t addr) :
-			m_target(s.target()), m_delay(s.delay), m_plastic(s.plastic() != 0), m_addr(addr) { }
+			m_target(s.target()), m_delay(s.delay), m_addr(addr) { }
 
 		AxonTerminalAux() :
-			m_target(~0), m_delay(~0), m_plastic(false), m_addr(~0) { }
+			m_target(~0), m_delay(~0), m_addr(~0) { }
 
 	private :
 
@@ -277,11 +272,9 @@ class AxonTerminalAux
 		unsigned m_target;
 
 		unsigned m_delay;
-		bool m_plastic;
 
 		/* Address into FCM on device */
 		size_t m_addr;
-
 };
 
 

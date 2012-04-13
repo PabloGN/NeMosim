@@ -13,16 +13,16 @@
 #include <map>
 
 #include <boost/utility.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <nemo/cuda/plugins/neuron_model.h>
 #include <nemo/NeuronType.hpp>
 #include <nemo/Plugin.hpp>
 
+#include "Bitvector.hpp"
 #include "Mapper.hpp"
 #include "NVector.hpp"
-#include "Bitvector.hpp"
 #include "kernel.cu_h"
-#include "parameters.cu_h"
 #include "types.h"
 
 namespace nemo {
@@ -33,7 +33,8 @@ namespace nemo {
 
 	namespace cuda {
 
-	class Mapper;
+class Mapper;
+class Parameters;
 
 /*! Per-neuron device data
  *
@@ -54,9 +55,9 @@ class Neurons : boost::noncopyable
 		Neurons(const nemo::network::Generator&, unsigned type_id, const Mapper&);
 
 		/*! Initialise the state of all neurons */
-		cudaError_t initHistory(
+		cudaError_t init(
 				unsigned globalPartitionCount,
-				param_t* d_params,
+				const Parameters& params,
 				unsigned* d_psize);
 
 		/*! Update the state of all neurons */
@@ -64,7 +65,6 @@ class Neurons : boost::noncopyable
 				cudaStream_t stream,
 				cycle_t cycle,
 				unsigned globalPartitionCount,
-				param_t* d_params,
 				unsigned* d_psize,
 				uint32_t* d_fstim,
 				float* d_istim,
@@ -201,6 +201,9 @@ class Neurons : boost::noncopyable
 		/* Size of each partition */
 		std::vector<unsigned> mh_partitionSize;
 
+		/* Index of each accumulator used by this neuron population */
+		std::vector<unsigned> m_inputs;
+
 		/* Number of partitions of \i this type */
 		unsigned localPartitionCount() const;
 
@@ -218,6 +221,8 @@ class Neurons : boost::noncopyable
 		 * dynamically */
 		Plugin m_plugin;
 		cuda_update_neurons_t* m_update_neurons;
+
+		boost::scoped_ptr<Parameters> m_globalParams;
 };
 
 

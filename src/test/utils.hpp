@@ -2,6 +2,7 @@
 #define NEMO_TEST_UTILS_HPP
 
 #include <nemo.hpp>
+#include <nemo/izhikevich.hpp>
 
 /* Run simulation for given length and return result in output vector */
 void
@@ -37,9 +38,12 @@ configuration(bool stdp, unsigned partitionSize,
 #endif
 		);
 
-/* Add a 'standard' excitatory neuron with fixed parameters */
+/* Add a 'standard' excitatory neuron with fixed parameters.
+ *
+ * \pre network is purely Izhikevich neuron and the neuron type index is zero
+ * */
 void
-addExcitatoryNeuron(unsigned nidx, nemo::Network& net, float sigma=0.0f);
+addExcitatoryNeuron(unsigned nidx, nemo::izhikevich::Network& net, float sigma=0.0f);
 
 
 
@@ -59,7 +63,13 @@ createRing(unsigned ncount, unsigned n0=0, bool plastic=false, unsigned nstep=1,
 
 /*! Add a ring to an existing network */
 void
-createRing(nemo::Network*, unsigned ncount, unsigned n0=0, bool plastic=false, unsigned nstep=1, unsigned delay=1);
+createRing(nemo::Network*,
+		unsigned neuronType,
+		unsigned synapseType,
+		unsigned ncount,
+		unsigned n0=0,
+		unsigned nstep=1,
+		unsigned delay=1);
 
 
 #endif

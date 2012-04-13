@@ -170,20 +170,11 @@ nemo_delete_simulation(nemo_simulation_t sim)
 nemo_status_t
 nemo_add_neuron_type(nemo_network_t net,
 		const char* name,
+		unsigned n_inputs,
+		unsigned inputs[],
 		unsigned* type)
 {
-	CATCH(net, addNeuronType(name), *type);
-}
-
-
-
-nemo_status_t
-nemo_add_neuron_iz(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(net, addNeuron(idx, a, b, c, d, u, v, sigma));
+	CATCH(net, addNeuronType(name, n_inputs, inputs), *type);
 }
 
 
@@ -199,16 +190,24 @@ nemo_add_neuron(nemo_network_t net,
 
 
 nemo_status_t
+nemo_add_synapse_type(nemo_network_t net, synapse_type spec, unsigned* type)
+{
+	CATCH(net, addSynapseType(spec), *type);
+}
+
+
+
+nemo_status_t
 nemo_add_synapse(nemo_network_t net,
+		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
 		unsigned delay,
 		float weight,
-		unsigned char is_plastic,
 		synapse_id* id)
 {
 	synapse_id sid = 0;
-	CALL(sid = net->addSynapse(source, target, delay, weight, is_plastic));
+	CALL(sid = net->addSynapse(typeIdx, source, target, delay, weight));
 	if(id != NULL) {
 		*id = sid;
 	}
@@ -275,26 +274,6 @@ nemo_set_neuron_s(nemo_simulation_t sim, unsigned idx, unsigned nargs, float arg
 	CATCH_(sim, setNeuron(idx, nargs, args));
 }
 
-
-
-nemo_status_t
-nemo_set_neuron_iz_n(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(net, setNeuron(idx, a, b, c, d, u, v, sigma));
-}
-
-
-nemo_status_t
-nemo_set_neuron_iz_s(nemo_simulation_t sim,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma)
-{
-	CATCH_(sim, setNeuron(idx, a, b, c, d, u, v, sigma));
-}
 
 
 nemo_status_t
@@ -419,20 +398,6 @@ nemo_status_t
 nemo_get_synapse_weight_s(nemo_simulation_t ptr, synapse_id synapse, float* weight)
 {
 	CATCH(ptr, getSynapseWeight(synapse), *weight);
-}
-
-
-nemo_status_t
-nemo_get_synapse_plastic_n(nemo_network_t ptr, synapse_id synapse, unsigned char* plastic)
-{
-	CATCH(ptr, getSynapsePlastic(synapse), *plastic);
-}
-
-
-nemo_status_t
-nemo_get_synapse_plastic_s(nemo_simulation_t ptr, synapse_id synapse, unsigned char* plastic)
-{
-	CATCH(ptr, getSynapsePlastic(synapse), *plastic);
 }
 
 

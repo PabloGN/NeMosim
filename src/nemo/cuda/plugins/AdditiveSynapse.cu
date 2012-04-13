@@ -1,4 +1,4 @@
-/*! \file gather.cu Gather kernel */
+/*! \file gather.cu gather kernel for additive synapses */
 
 /* Copyright 2010 Imperial College London
  *
@@ -9,16 +9,18 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "types.h"
+#include "synapse_model.h"
 
-#include "log.cu_h"
+#include <nemo/cuda/types.h>
+#include <nemo/cuda/log.cu_h>
+#include <nemo/cuda/fcm.cu_h>
 
-#include "bitvector.cu"
-#include "double_buffer.cu"
-#include "fixedpoint.cu"
-#include "globalQueue.cu"
-#include "parameters.cu"
-#include "current.cu"
+#include <nemo/cuda/bitvector.cu>
+#include <nemo/cuda/double_buffer.cu>
+#include <nemo/cuda/fixedpoint.cu>
+#include <nemo/cuda/globalQueue.cu>
+#include <nemo/cuda/parameters.cu>
+#include <nemo/cuda/current.cu>
 
 
 /*! Gather incoming current from all spikes due for delivery \e now
@@ -28,7 +30,7 @@
  *
  * \param[in] cycle
  * 		Current cycle
- * \param[in] g_fcm
+ * \param[in] fcm
  *		Forward connectivity matrix in global memory
  * \param[in] g_gqFill
  *		Fill rate for global queue
@@ -41,28 +43,23 @@ __device__
 void
 gather( unsigned cycle,
 		const param_t& s_params,
-		synapse_t* g_fcm,
+		fcm_dt& fcm,
 		gq_entry_t* g_gqData,
 		unsigned* g_gqFill,
-		float sf_currentE[],
-		float sf_currentI[])
+		float sf_current[])
 {
 	/* Per-neuron bit-vectors. See bitvector.cu for accessors */
-	__shared__ uint32_t s_overflowE[S_BV_PITCH];
-	__shared__ uint32_t s_overflowI[S_BV_PITCH];
+	__shared__ uint32_t s_overflow[S_BV_PITCH];
 
-	bv_clear(s_overflowE);
-	bv_clear(s_overflowI);
+	bv_clear(s_overflow);
 
 	/* Accumulation is done using fixed-point, but the conversion back to
 	 * floating point is done in-place. */
-	fix_t* s_currentE = (fix_t*) sf_currentE;
-	fix_t* s_currentI = (fix_t*) sf_currentI;
+	fix_t* s_current = (fix_t*) sf_current;
 
 	for(int bNeuron=0; bNeuron < MAX_PARTITION_SIZE; bNeuron += THREADS_PER_BLOCK) {
 		unsigned neuron = bNeuron + threadIdx.x;
-		s_currentE[neuron] = 0U;
-		s_currentI[neuron] = 0U;
+		s_current[neuron] = 0U;
 	}
 	// __syncthreads();
 
@@ -95,7 +92,7 @@ gather( unsigned cycle,
 
 		if(threadIdx.x < s_groupSize) {
 			gq_entry_t sgin = gq_read(readBuffer(cycle), group, g_gqData);
-			s_warpAddress[threadIdx.x] = g_fcm + gq_warpOffset(sgin) * WARP_SIZE;
+			s_warpAddress[threadIdx.x] = fcm.data + gq_warpOffset(sgin) * WARP_SIZE;
 			DEBUG_MSG_SYNAPSE("c%u w%u -> p%u\n", cycle, gq_warpOffset(sgin), CURRENT_PARTITION);
 		}
 
@@ -115,17 +112,8 @@ gather( unsigned cycle,
 			if(gwarp < s_groupSize) {
 				postsynaptic = *base;
 				ASSERT(postsynaptic < MAX_PARTITION_SIZE);
-				weight = *((unsigned*)base + s_params.fcmPlaneSize);
+				weight = *((unsigned*)base + fcm.planeSize);
 			}
-
-#ifdef NEMO_SINGLE_CURRENT
-			fix_t* s_current = s_currentE;
-			uint32_t* s_overflow = s_overflowE;
-#else
-			bool excitatory = weight >= 0;
-			fix_t* s_current = excitatory ? s_currentE : s_currentI;
-			uint32_t* s_overflow = excitatory ? s_overflowE : s_overflowI;
-#endif
 
 			if(weight != 0) {
 				bool overflow = fx_atomicAdd(s_current + postsynaptic, weight);
@@ -135,18 +123,13 @@ gather( unsigned cycle,
 #endif
 				DEBUG_MSG_SYNAPSE("c%u p?n? -> p%un%u %+f [warp %u]\n",
 						s_cycle, CURRENT_PARTITION, postsynaptic,
-						fx_tofloat(weight), (s_warpAddress[gwarp] - g_fcm) / WARP_SIZE);
+						fx_tofloat(weight), (s_warpAddress[gwarp] - fcm.data) / WARP_SIZE);
 			}
 		}
 		__syncthreads(); // to avoid overwriting s_groupSize
 	}
 
-#ifdef NEMO_SINGLE_CURRENT
-	fx_arrSaturatedToFloat(s_overflowE, s_currentE, sf_currentE, s_params.fixedPointScale);
-#else
-	fx_arrSaturatedToFloat(s_overflowE, false, s_currentE, sf_currentE, s_params.fixedPointScale);
-	fx_arrSaturatedToFloat(s_overflowI,  true, s_currentI, sf_currentI, s_params.fixedPointScale);
-#endif
+	fx_arrSaturatedToFloat(s_overflow, s_current, sf_current, s_params.fixedPointScale);
 }
 
 
@@ -156,13 +139,12 @@ void
 gather( uint32_t cycle,
 		unsigned* g_partitionSize,
 		param_t* g_params,
-		synapse_t* g_fcm,
+		fcm_dt fcm,
 		gq_entry_t* g_gqData,      // pitch = c_gqPitch
 		unsigned* g_gqFill,
 		float* g_current)
 {
-	__shared__ float s_currentE[MAX_PARTITION_SIZE];
-	__shared__ float s_currentI[MAX_PARTITION_SIZE];
+	__shared__ float s_current[MAX_PARTITION_SIZE];
 
 	__shared__ param_t s_params;
 
@@ -177,24 +159,28 @@ gather( uint32_t cycle,
 	} // sync done in loadParameters
 	loadParameters(g_params, &s_params);
 
-	gather(cycle, s_params, g_fcm, g_gqData, g_gqFill, s_currentE, s_currentI);
+	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_current);
 
 	/* Write back to global memory The global memory roundtrip is so that the
-	 * gather and fire steps can be done in separate kernel invocations. */
+	 * gather and fire steps can be done in separate kernel invocations.
+	 *
+	 * The host has passed in a pointer offset to the correct accumulator, so
+	 * we only need to offset based on partition.
+	 */
 
-	float* g_currentE = incomingExcitatory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
-	float* g_currentI = incomingInhibitory(g_current, PARTITION_COUNT, CURRENT_PARTITION, s_params.pitch32);
+	float* g_currentOut = accumulator(g_current, PARTITION_COUNT, CURRENT_PARTITION, 0, s_params.pitch32);
+
 	for(unsigned bNeuron=0; bNeuron < s_partitionSize; bNeuron += THREADS_PER_BLOCK) {
 		unsigned neuron = bNeuron + threadIdx.x;
-		g_currentE[neuron] = s_currentE[neuron];
-		g_currentI[neuron] = s_currentI[neuron];
+		g_currentOut[neuron] = s_current[neuron];
 	}
 }
 
 
 
 
-__host__
+extern "C"
+NEMO_PLUGIN_DLL_PUBLIC
 cudaError_t
 gather( cudaStream_t stream,
 		unsigned cycle,
@@ -202,7 +188,7 @@ gather( cudaStream_t stream,
 		unsigned* d_partitionSize,
 		param_t* d_params,
 		float* d_current,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill)
 {
@@ -211,3 +197,6 @@ gather( cudaStream_t stream,
 	gather<<<dimGrid, dimBlock, 0, stream>>>(cycle, d_partitionSize, d_params, d_fcm, d_gqData, d_gqFill, d_current);
 	return cudaGetLastError();
 }
+
+
+cuda_gather_t* test_gather = &gather;

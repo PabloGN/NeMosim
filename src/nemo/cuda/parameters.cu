@@ -19,7 +19,8 @@ loadParameters(const param_t* g_param, param_t* s_param)
 {
 	int *src = (int*) g_param;
 	int *dst = (int*) s_param;
-	for(unsigned i=threadIdx.x; i < sizeof(param_t)/sizeof(int); i+=blockDim.x) {
+	unsigned words = (sizeof(param_t) + sizeof(int) - 1) / sizeof(int);
+	for(unsigned i=threadIdx.x; i < words; i+=blockDim.x) {
 		dst[i] = src[i];
 	}
 	__syncthreads();

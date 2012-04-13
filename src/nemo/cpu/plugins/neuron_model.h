@@ -13,14 +13,14 @@ extern "C" {
 
 /*! Update a number of neurons in a contigous range
  *
- * \param currentEPSP input current due to EPSPs
- * \param currentIPSP input current due to IPSPs
+ * \param accumulators
+ * 		array of pointers to the accumulators required by this neuron model
  * \param currentExternal externally (user-provided input current)
  * \param cycle current simulation cycle
  *
  * \post currentExternal contain all 0
  *
- * There is no need to clear currentEPSP and currentIPSP
+ * There is no need to clear the accumulators
  */
 typedef void cpu_update_neurons_t(
 		unsigned start, unsigned end,
@@ -30,8 +30,7 @@ typedef void cpu_update_neurons_t(
 		unsigned fbits,
 		unsigned fstim[],
 		RNG rng[],
-		float currentEPSP[],
-		float currentIPSP[],
+		float* accumulators[],
 		float currentExternal[],
 		uint64_t recentFiring[],
 		unsigned fired[],

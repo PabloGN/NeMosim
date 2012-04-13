@@ -155,6 +155,8 @@ RCM<Key,Data,Width>::addSynapse(
 		const Synapse& s,
 		size_t f_addr)
 {
+#warning "RCM::addSynapse not supported due to STDP not working in this version"
+#if 0
 	if(m_enabled) {
 		if(!m_stdpEnabled || s.plastic()) {
 			size_t r_addr = allocateSynapse(target);
@@ -169,6 +171,7 @@ RCM<Key,Data,Width>::addSynapse(
 			}
 		}
 	}
+#endif
 }
 
 

@@ -22,11 +22,12 @@
 
 #ifdef NEMO_BRIAN_ENABLED
 const char* SIMULATION_PROPAGATE_DOC =
-	"Propagate spikes on GPU given firing\n"
+	"Propagate spikes on GPU for synapses of a single type given firing\n"
 	"\n"
 	"This function is intended purely for integration with Brian\n"
 	"\n"
 	"Inputs:\n"
+	"stype  -- synape type index, as returned by add_synapse_type\n"
 	"fired  -- device pointer non-compact list of fired neurons (on CUDA)\n"
 	"          or host pointer to compact list of fired neurons (on CPU)\n"
 	"nfired -- length of fired if on CPU\n"
@@ -223,52 +224,78 @@ checkInputVector(PyObject* obj, unsigned &vectorLength)
 
 
 
+
+unsigned
+add_synapse_type(nemo::Network& net)
+{
+	return net.addSynapseType(NEMO_SYNAPSE_ADDITIVE);
+}
+
+
+
 /*! Add one or more synapses
  *
- * \return synapse id
+ * \param getSynapseId
+ * \return if getSynapseId is true return either synapse id scalar or list,
+ * otherwise return None
  *
  * The arguments (other than net) may be either scalar or vector. All vectors
  * must be of the same length. If any of the inputs are vectors, the scalar
  * arguments are replicated for each synapse.
  */
 PyObject*
-add_synapse(nemo::Network& net, PyObject* sources, PyObject* targets,
-		PyObject* delays, PyObject* weights, PyObject* plastics)
+add_synapse(nemo::Network& net,
+		PyObject* types,
+		PyObject* sources,
+		PyObject* targets,
+		PyObject* delays,
+		PyObject* weights,
+		bool getSynapseId)
 {
 	unsigned len = 0;
 
+	bool vectorTypes    = checkInputVector(types, len);
 	bool vectorSources  = checkInputVector(sources, len);
 	bool vectorTargets  = checkInputVector(targets, len);
 	bool vectorDelays   = checkInputVector(delays, len);
 	bool vectorWeights  = checkInputVector(weights, len);
-	bool vectorPlastics = checkInputVector(plastics, len);
 
 	to_python_value<synapse_id&> get_id;
 
 	if(len == 0) {
 		/* All inputs are scalars */
-		return get_id(net.addSynapse(
+		synapse_id id = net.addSynapse(
+					extract<unsigned>(types),
 					extract<unsigned>(sources),
 					extract<unsigned>(targets),
 					extract<unsigned>(delays),
-					extract<float>(weights),
-					extract<unsigned char>(plastics))
-				);
+					extract<float>(weights));
+		return getSynapseId ? get_id(id) : Py_None;
 	} else {
 		/* At least some inputs are vectors, so we need to return a list */
-		PyObject* list = PyList_New(len);
+		PyObject* ret = getSynapseId ? PyList_New(len) : Py_None;
 		for(unsigned i=0; i != len; ++i) {
+			unsigned type = extract<unsigned>(vectorTypes ? PySequence_GetItem(types, i) : types);
 			unsigned source = extract<unsigned>(vectorSources ? PySequence_GetItem(sources, i) : sources);
 			unsigned target = extract<unsigned>(vectorTargets ? PySequence_GetItem(targets, i) : targets);
 			unsigned delay = extract<unsigned>(vectorDelays ? PySequence_GetItem(delays, i) : delays);
 			float weight = extract<float>(vectorWeights ? PySequence_GetItem(weights, i) : weights);
-			unsigned char plastic = extract<unsigned char>(vectorPlastics ? PySequence_GetItem(plastics, i) : plastics);
-			PyList_SetItem(list, i, get_id(net.addSynapse(source, target, delay, weight, plastic)));
+			synapse_id id = net.addSynapse(type, source, target, delay, weight);
+			if(getSynapseId) {
+				PyList_SetItem(ret, i, get_id(id));
+			}
 		}
-		return list;
+		return ret;
 	}
 }
 
+
+
+unsigned
+add_neuron_type(nemo::Network& net, const std::string& name, const std::vector<unsigned> inputs)
+{
+	return net.addNeuronType(name, inputs.size(), inputs.empty() ? 0 : &inputs[0]);
+}
 
 
 /*! Add one ore more neurons of arbitrary type
@@ -647,16 +674,6 @@ get_synapse_weight(const Net& net, PyObject* ids)
 }
 
 
-template<class Net>
-PyObject*
-get_synapse_plastic(const Net& net, PyObject* ids)
-{
-	return get_synapse_x<unsigned char>(
-			static_cast<const nemo::ReadableNetwork&>(net),
-			ids, std::mem_fun_ref(&nemo::ReadableNetwork::getSynapsePlastic));
-}
-
-
 
 /* This wrappers for overloads of nemo::Simulation::step */
 const std::vector<unsigned>&
@@ -694,9 +711,9 @@ step_fi(nemo::Simulation& sim,
 
 /*! \copydoc nemo::Simulation::propagate */
 size_t
-propagate(nemo::Simulation& sim, size_t fired, int nfired)
+propagate(nemo::Simulation& sim, unsigned synapseTypeIdx, size_t fired, int nfired)
 {
-	return size_t(sim.propagate(reinterpret_cast<uint32_t*>(fired), nfired));
+	return size_t(sim.propagate(synapseTypeIdx, reinterpret_cast<uint32_t*>(fired), nfired));
 }
 
 #endif
@@ -759,8 +776,9 @@ BOOST_PYTHON_MODULE(_nemo)
 	;
 
 	class_<nemo::Network, boost::noncopyable>("Network", NETWORK_DOC)
-		.def("add_neuron_type", &nemo::Network::addNeuronType, NETWORK_ADD_NEURON_TYPE_DOC)
+		.def("add_neuron_type", add_neuron_type, NETWORK_ADD_NEURON_TYPE_DOC)
 		.def("add_neuron", raw_function(add_neuron_va, 3), NETWORK_ADD_NEURON_DOC)
+		.def("add_synapse_type", add_synapse_type)
 		.def("add_synapse", add_synapse, NETWORK_ADD_SYNAPSE_DOC)
 		.def("set_neuron", raw_function(set_neuron_va<nemo::Network>, 2), CONSTRUCTABLE_SET_NEURON_DOC)
 		.def("get_neuron_state", get_neuron_state<nemo::Network>, CONSTRUCTABLE_GET_NEURON_STATE_DOC)
@@ -774,7 +792,6 @@ BOOST_PYTHON_MODULE(_nemo)
 		.def("get_synapse_target", get_synapse_target<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_TARGET_DOC)
 		.def("get_synapse_delay", get_synapse_delay<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_DELAY_DOC)
 		.def("get_synapse_weight", get_synapse_weight<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_WEIGHT_DOC)
-		.def("get_synapse_plastic", get_synapse_plastic<nemo::Network>, CONSTRUCTABLE_GET_SYNAPSE_PLASTIC_DOC)
 	;
 
 	class_<nemo::Simulation, boost::shared_ptr<nemo::Simulation>, boost::noncopyable>(
@@ -807,7 +824,6 @@ BOOST_PYTHON_MODULE(_nemo)
 		.def("get_synapse_target", get_synapse_target<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_TARGET_DOC)
 		.def("get_synapse_delay", get_synapse_delay<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_DELAY_DOC)
 		.def("get_synapse_weight", get_synapse_weight<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_WEIGHT_DOC)
-		.def("get_synapse_plastic", get_synapse_plastic<nemo::Simulation>, CONSTRUCTABLE_GET_SYNAPSE_PLASTIC_DOC)
 		.def("elapsed_wallclock", &nemo::Simulation::elapsedWallclock, SIMULATION_ELAPSED_WALLCLOCK_DOC)
 		.def("elapsed_simulation", &nemo::Simulation::elapsedSimulation, SIMULATION_ELAPSED_SIMULATION_DOC)
 		.def("reset_timer", &nemo::Simulation::resetTimer, SIMULATION_RESET_TIMER_DOC)

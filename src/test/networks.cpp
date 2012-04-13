@@ -47,7 +47,7 @@ runOne( backend_t backend,
 	assert(firstUnconnected <= lastUnconnected);
 	assert(lastUnconnected <= ncount);
 
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 
 	for(unsigned i=0; i < ncount; ++i) {
 		unsigned source = neuronIndex(i, contigous);
@@ -55,7 +55,8 @@ runOne( backend_t backend,
 		if(!(firstUnconnected <= i && i < lastUnconnected)) {
 			for(unsigned j=0; j < ncount; ++j) {
 				unsigned target = neuronIndex(j, contigous);
-				net.addSynapse(source, target, 1, 2.0f, stdp);
+#warning "STDP synapse not set up correctly"
+				net.addSynapse(net.synapseType(), source, target, 1, 2.0f /*, stdp */);
 			}
 		}
 	}
@@ -102,11 +103,12 @@ run(backend_t backend)
 	unsigned ncount = 100;
 	bool stdp = false;
 
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 
 	for(unsigned source=0; source < ncount; ++source) {
 		addExcitatoryNeuron(source, net);
-		net.addSynapse(source, source + ncount, 1, 2.0f, stdp);
+#warning "STDP synapse not set up correctly"
+		net.addSynapse(net.synapseType(), source, source + ncount, 1, 2.0f /*, stdp */);
 	}
 
 	nemo::Configuration conf = configuration(stdp, 1024, backend);

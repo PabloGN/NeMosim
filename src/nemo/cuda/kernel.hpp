@@ -17,7 +17,10 @@
 #include "localQueue.cu_h"
 #include "types.h"
 #include "parameters.cu_h"
+#include "fcm.cu_h"
 #include "rcm.cu_h"
+#include "outgoing.cu_h"
+
 
 /*! Update synapse weight using the accumulated eligibility trace
  *
@@ -39,7 +42,7 @@ applyStdp(
 		unsigned* d_partitionSize,
 		unsigned fractionalBits,
 		param_t* d_params,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		rcm_dt* d_rcm,
 		float minExcitatoryWeight,
 		float maxExcitatoryWeight,
@@ -55,12 +58,48 @@ gather( cudaStream_t stream,
 		unsigned* d_partitionSize,
 		param_t* d_globalParameters,
 		float* d_current,
-		synapse_t* d_fcm,
+		const fcm_dt& d_fcm,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill);
 
 
 
+
+/*! Perform local scatter step */
+cudaError_t
+scatterLocal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		unsigned* d_nFired,
+		nidx_dt* d_fired,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill,
+		delay_dt d_ndData[],
+		unsigned d_ndFill[]);
+
+
+
+/*! Perform global scatter step */
+cudaError_t
+scatterGlobal(cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		param_t* d_globalParameters,
+		const outgoing_dt& d_outgoing,
+		gq_entry_t* d_gqData,
+		unsigned* d_gqFill,
+		lq_entry_t* d_lqData,
+		unsigned* d_lqFill);
+
+
+/*! Perform both the local and global scatter steps
+ *
+ * The reason for calling this function rather than first \a scatterLocal and
+ * then \a scatterGlobal is that this can be quite a bit faster (nearly 10%
+ * measured). However, the two can only be called together in the special case
+ * when there is precisely one synapse type in the network.
+ */
 cudaError_t
 scatter(cudaStream_t stream,
 		unsigned cycle,
@@ -68,15 +107,13 @@ scatter(cudaStream_t stream,
 		param_t* d_globalParameters,
 		unsigned* d_nFired,
 		nidx_dt* d_fired,
-		outgoing_addr_t* d_outgoingAddr,
-		outgoing_t* d_outgoing,
+		const outgoing_dt& d_outgoing,
 		gq_entry_t* d_gqData,
 		unsigned* d_gqFill,
 		lq_entry_t* d_lqData,
 		unsigned* d_lqFill,
 		delay_dt d_ndData[],
 		unsigned d_ndFill[]);
-
 
 cudaError_t
 updateStdp(

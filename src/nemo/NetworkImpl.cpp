@@ -35,16 +35,48 @@ NetworkImpl::NetworkImpl() :
 
 
 unsigned
-NetworkImpl::addNeuronType(const std::string& name)
+NetworkImpl::addNeuronType(
+		const std::string& name,
+		unsigned nInputs,
+		const unsigned inputs[])
 {
-	if(m_typeIds.find(name) == m_typeIds.end()) {
-		unsigned type_id = m_neurons.size();
-		m_neurons.push_back(Neurons(NeuronType(name)));
-		m_typeIds[name] = type_id;
-		return type_id;
-	} else {
-		return m_typeIds[name];
+	using boost::format;
+
+	for(unsigned s=0; s < nInputs; ++s) {
+		if(inputs[s] >= m_synapses.size()) {
+			throw nemo::exception(NEMO_INVALID_INPUT,
+					str(format("Invalid synapse id (%u) used as input to neuron type %s")
+						% inputs[s] % name));
+		}
 	}
+
+	unsigned type_id = m_neurons.size();
+
+	if(type_id > 1000) {
+		/* There's no reason why in principle it shouldn't work to have an
+		 * arbitrary number of neurons. However, a very large number of neurons
+		 * is indicative of a user error where the neuron type is added once
+		 * for each neuron */
+		throw nemo::exception(NEMO_INVALID_INPUT, "Only 1000 neuron types supported");
+	}
+
+	m_neurons.push_back(Neurons(
+				NeuronType(name, nInputs),
+				std::vector<unsigned>(inputs, inputs+nInputs)));
+	return type_id;
+}
+
+
+
+unsigned
+NetworkImpl::addSynapseType(const synapse_type& type)
+{
+	if(type != NEMO_SYNAPSE_ADDITIVE) {
+		throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo only supports simple additive synapses");
+	}
+	m_synapses.push_back(type);
+	m_fcm.push_back(fcm_t());
+	return m_synapses.size() - 1;
 }
 
 
@@ -52,10 +84,15 @@ NetworkImpl::addNeuronType(const std::string& name)
 const NeuronType&
 NetworkImpl::neuronType(unsigned id) const
 {
-	if(m_neurons.size() == 0) {
-		throw nemo::exception(NEMO_LOGIC_ERROR, "No neurons in network, so neuron type unkown");
-	}
-	return m_neurons.at(id).type();
+	return neuronCollection(id).type();
+}
+
+
+
+const std::vector<unsigned>&
+NetworkImpl::neuronInputs(unsigned id) const
+{
+	return neuronCollection(id).inputs();
 }
 
 
@@ -104,29 +141,42 @@ NetworkImpl::setNeuron(unsigned nidx, unsigned nargs, const float args[])
 
 synapse_id
 NetworkImpl::addSynapse(
+		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
 		unsigned delay,
-		float weight,
-		unsigned char plastic)
+		float weight)
 {
 	using boost::format;
 
 	if(delay < 1) {
 		throw nemo::exception(NEMO_INVALID_INPUT,
-				str(format("Invalid delay (%u) for synapse between %u and %u") % delay % source % target));
+				str(format("Invalid delay (%u) for synapse between neurons %u and %u")
+					% delay
+					% source
+					% target));
 	}
 
-	id32_t id = m_fcm[source].addSynapse(target, delay, weight, plastic != 0);
+	/* only non-plastic synapses supported via this API function */
+	try {
+		id32_t id = m_fcm.at(typeIdx)[source].addSynapse(target, delay, weight);
 
-	//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
-	m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));
-	m_minIdx = std::min(m_minIdx, int(std::min(source, target)));
-	m_maxDelay = std::max(m_maxDelay, delay);
-	m_maxWeight = std::max(m_maxWeight, weight);
-	m_minWeight = std::min(m_minWeight, weight);
+		//! \todo make sure we don't have maxDelay in cuda::ConnectivityMatrix
+		m_maxIdx = std::max(m_maxIdx, int(std::max(source, target)));
+		m_minIdx = std::min(m_minIdx, int(std::min(source, target)));
+		m_maxDelay = std::max(m_maxDelay, delay);
+		m_maxWeight = std::max(m_maxWeight, weight);
+		m_minWeight = std::min(m_minWeight, weight);
 
-	return make_synapse_id(source, id);
+		return make_synapse_id(source, typeIdx, id);
+	} catch(std::out_of_range& e) {
+		throw nemo::exception(NEMO_INVALID_INPUT,
+				str(format("Invalid synapse type index (%u) for synapse between neurons %u and %u")
+					% typeIdx
+					% source
+					% target));
+	}
+
 }
 
 
@@ -168,11 +218,12 @@ NetworkImpl::setNeuronParameter(unsigned nidx, unsigned parameter, float val)
 
 
 const Axon&
-NetworkImpl::axon(nidx_t source) const
+NetworkImpl::axon(nidx_t source, unsigned typeIdx) const
 {
 	using boost::format;
-	fcm_t::const_iterator i_src = m_fcm.find(source);
-	if(i_src == m_fcm.end()) {
+	const fcm_t& fcm = m_fcm.at(typeIdx);
+	fcm_t::const_iterator i_src = fcm.find(source);
+	if(i_src == fcm.end()) {
 		throw nemo::exception(NEMO_INVALID_INPUT,
 				str(format("synapses of non-existing neuron (%u) requested") % source));
 	}
@@ -184,7 +235,7 @@ NetworkImpl::axon(nidx_t source) const
 unsigned
 NetworkImpl::getSynapseTarget(const synapse_id& id) const
 {
-	return axon(neuronIndex(id)).getTarget(synapseIndex(id));
+	return axon(neuronIndex(id), typeIndex(id)).getTarget(synapseIndex(id));
 }
 
 
@@ -192,7 +243,7 @@ NetworkImpl::getSynapseTarget(const synapse_id& id) const
 unsigned
 NetworkImpl::getSynapseDelay(const synapse_id& id) const
 {
-	return axon(neuronIndex(id)).getDelay(synapseIndex(id));
+	return axon(neuronIndex(id), typeIndex(id)).getDelay(synapseIndex(id));
 }
 
 
@@ -200,15 +251,7 @@ NetworkImpl::getSynapseDelay(const synapse_id& id) const
 float
 NetworkImpl::getSynapseWeight(const synapse_id& id) const
 {
-	return axon(neuronIndex(id)).getWeight(synapseIndex(id));
-}
-
-
-
-unsigned char
-NetworkImpl::getSynapsePlastic(const synapse_id& id) const
-{
-	return axon(neuronIndex(id)).getPlastic(synapseIndex(id));
+	return axon(neuronIndex(id), typeIndex(id)).getWeight(synapseIndex(id));
 }
 
 
@@ -216,11 +259,14 @@ NetworkImpl::getSynapsePlastic(const synapse_id& id) const
 const std::vector<synapse_id>&
 NetworkImpl::getSynapsesFrom(unsigned source)
 {
-	fcm_t::const_iterator i_src = m_fcm.find(source);
-	if(i_src == m_fcm.end()) {
-		m_queriedSynapseIds.clear();
-	} else {
-		i_src->second.setSynapseIds(source, m_queriedSynapseIds);
+	m_queriedSynapseIds.clear();
+	unsigned typeIdx = 0U;
+	for(std::vector<fcm_t>::const_iterator fcm = m_fcm.begin();
+			fcm != m_fcm.end(); ++fcm, ++typeIdx) {
+		fcm_t::const_iterator i_src = fcm->find(source);
+		if(i_src != fcm->end()) {
+			i_src->second.appendSynapseIds(source, typeIdx, m_queriedSynapseIds);
+		}
 	}
 	return m_queriedSynapseIds;
 }
@@ -307,11 +353,20 @@ NetworkImpl::neuron_end(unsigned id) const
 }
 
 
-synapse_iterator
-NetworkImpl::synapse_begin() const
+
+unsigned
+NetworkImpl::synapseTypeCount() const
 {
-	fcm_t::const_iterator ni = m_fcm.begin();
-	fcm_t::const_iterator ni_end = m_fcm.end();
+	return m_synapses.size();
+}
+
+
+
+synapse_iterator
+NetworkImpl::synapse_begin(unsigned type) const
+{
+	fcm_t::const_iterator ni = m_fcm.at(type).begin();
+	fcm_t::const_iterator ni_end = m_fcm.at(type).end();
 
 	size_t gi = 0;
 	size_t gi_end = 0;
@@ -325,13 +380,13 @@ NetworkImpl::synapse_begin() const
 
 
 synapse_iterator
-NetworkImpl::synapse_end() const
+NetworkImpl::synapse_end(unsigned type) const
 {
-	fcm_t::const_iterator ni = m_fcm.end();
+	fcm_t::const_iterator ni = m_fcm.at(type).end();
 	size_t gi = 0;
 
-	if(m_fcm.begin() != ni) {
-		gi = m_fcm.rbegin()->second.size();
+	if(m_fcm.at(type).begin() != ni) {
+		gi = m_fcm.at(type).rbegin()->second.size();
 	}
 
 	return synapse_iterator(new programmatic::synapse_iterator(ni, ni, gi, gi));

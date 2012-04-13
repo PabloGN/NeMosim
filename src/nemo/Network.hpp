@@ -50,13 +50,38 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 * \param name
 		 * 		canonical name of the neuron type. The neuron type data is
 		 * 		loaded from a plugin configuration file of the same name.
+		 * \param nInputs
+		 * 		number of different synapse input types this neuron model
+		 * 		expects.
+		 * \param inputs
+		 * 		indices of the synapse types from which this neuron type
+		 * 		receives input.
 		 * \return
 		 * 		index of the the neuron type, to be used when adding neurons.
 		 *
 		 * This function must be called before neurons of the specified type
 		 * can be added to the network.
+		 *
+		 * For input neurons, i.e. neurons which are unaffected by incoming
+		 * synapses nInputs should be 0, while inputs should be NULL.
+		 *
+		 * \throws if any of the synapse types do not exist
+		 * \throws if on a subsequent call the synapse types are not the same
 		 */
-		unsigned addNeuronType(const std::string& name);
+		unsigned addNeuronType(const std::string& name,
+				unsigned nInputs,
+				const unsigned inputs[]);
+
+		/*! \brief Register a new synapse type with the network.
+		 *
+		 * \return index of the synape type, to be used when adding synapses
+		 *
+		 * All synapses have the same fundamental type (simple additive).
+		 *
+		 * This function must be called before synapses of the specified type
+		 * can be added to the network.
+		 */
+		unsigned addSynapseType(synapse_type t=NEMO_SYNAPSE_ADDITIVE);
 
 		/*! \brief Add a neuron to the network
 		 *
@@ -75,40 +100,6 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		void addNeuron(unsigned type, unsigned idx,
 				unsigned nargs, const float args[]);
 
-		/*! \brief Add a single Izhikevich neuron to the network
-		 *
-		 * The neuron uses the Izhikevich neuron model. See E. M. Izhikevich
-		 * "Simple model of spiking neurons", \e IEEE \e Trans. \e Neural \e
-		 * Networks, vol 14, pp 1569-1572, 2003 for a full description of the
-		 * model and the parameters.
-		 *
-		 * \param idx
-		 * 		Neuron index. This should be unique
-		 * \param a
-		 * 		Time scale of the recovery variable \a u
-		 * \param b
-		 * 		Sensitivity to sub-threshold fluctutations in the membrane
-		 * 		potential \a v
-		 * \param c
-		 * 		After-spike reset value of the membrane potential \a v
-		 * \param d
-		 * 		After-spike reset of the recovery variable \a u
-		 * \param u
-		 * 		Initial value for the membrane recovery variable
-		 * \param v
-		 * 		Initial value for the membrane potential
-		 * \param sigma
-		 * 		Parameter for a random gaussian per-neuron process which
-		 * 		generates random input current drawn from an N(0,\a sigma)
-		 * 		distribution. If set to zero no random input current will be
-		 * 		generated.
-		 *
- 		 * \deprecated in favour of the generic Network::addNeuron function
-		 */
-		void addNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
-
 		/*! Set an existing neuron
 		 *
 		 * \param idx
@@ -124,24 +115,18 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 		 */
 		void setNeuron(unsigned idx, unsigned nargs, const float args[]);
 
-		/*! Change parameters/state variables of a single existing Izhikevich-type neuron
+		/* Add a single synapse and return its unique id
 		 *
-		 * The parameters are the same as for \a nemo::Network::addNeuron
+		 * \param typeIdx synapse type index, as returned by addSynapseType
 		 *
- 		 * \deprecated in favour of the generic nemo::Network::setNeuron function
+		 * \return Unique id of this synapse (which can be used for run-time queries).
 		 */
-		void setNeuron(unsigned idx,
-				float a, float b, float c, float d,
-				float u, float v, float sigma);
-
-		/* Add a single synapse and return its unique id */
 		synapse_id addSynapse(
+				unsigned typeIdx,
 				unsigned source,
 				unsigned target,
 				unsigned delay,
-				float weight,
-				unsigned char plastic);
-
+				float weight);
 
 		/*! Get a single parameter for a single neuron
 		 *
@@ -191,9 +176,6 @@ class NEMO_BASE_DLL_PUBLIC Network : public ReadableNetwork
 
 		/*! \return weight for a synapse */
 		float getSynapseWeight(const synapse_id&) const;
-
-		/*! \return plasticity status for a synapse */
-		unsigned char getSynapsePlastic(const synapse_id&) const;
 
 		/*! \copydoc nemo::ReadableNetwork::getSynapsesFrom */
 		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);

@@ -227,27 +227,23 @@ void nemo_delete_network(nemo_network_t);
  * \param name
  * 		canonical name of the neuron type. The neuron type data is loaded from
  * 		a plugin configuration file of the same name.
+ * \param n_inputs
+ * 		number of different synapse input types this neuron model expects.
+ * \param inputs
+ * 		indices of the synapse types from which this neuron type receives input.
  * \param[out] neuron_type
  * 		index of the the neuron type, to be used when adding neurons.
  *
  * \see nemo_add_neuron
+ * \see nemo_add_synapse_type
  */
 NEMO_DLL_PUBLIC
 nemo_status_t
 nemo_add_neuron_type(nemo_network_t,
 		const char* name,
+		unsigned n_inputs,
+		unsigned inputs[],
 		unsigned* neuron_type);
-
-
-/*! \brief Add a single Izhikevich neuron to the network
- * \deprecated in favour of the generic nemo_add_neuron() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_add_neuron_iz(nemo_network_t,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
 
 
 
@@ -269,20 +265,40 @@ nemo_add_neuron(nemo_network_t, unsigned type, unsigned idx,
 
 
 
+
+/*! Register a new synapse type with the network.
+ *
+ * \param spec synapse type (enumeration type)
+ * \param[out] typeIdx index of the synape type, to be used when adding synapses
+ *
+ * All synapses have the same fundamental type (simple additive).
+ *
+ * This function must be called before synapses of the specified type
+ * can be added to the network.
+ */
+nemo_status_t
+nemo_add_synapse_type(nemo_network_t net,
+		synapse_type spec,
+		unsigned* typeIdx);
+
+
+
 /* Add a single synapse to network
  *
- * \a id
+ * \param typeIdx
+ * 		Synapse type index, as returned by \a nemo_add_synapse_type
+ * \param[out] id
  * 		Unique id of this synapse (which can be used for run-time queries). Set
  * 		to NULL if this is not required.
  */
 NEMO_DLL_PUBLIC
 nemo_status_t
 nemo_add_synapse(nemo_network_t,
+		unsigned typeIdx,
 		unsigned source,
 		unsigned target,
 		unsigned delay,
 		float weight,
-		unsigned char is_plastic,
 		synapse_id* id);
 
 
@@ -541,26 +557,6 @@ nemo_status_t
 nemo_get_synapse_weight_s(nemo_simulation_t, synapse_id synapse, float* weight);
 
 
-/*! Get boolean plasticity status for a single synapse during construction
- *
- * \param synapse synapse id (see \a nemo_add_synapse)
- * \param[out] plastic boolean indicating whether synapse is plastic
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_get_synapse_plastic_n(nemo_network_t, synapse_id synapse, unsigned char* plastic);
-
-
-/*! Get boolean plasticity status for a single synapse during simulation
- *
- * \param synapse synapse id (see \a nemo_add_synapse)
- * \param[out] plastic boolean indicating whether synapse is plastic
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_get_synapse_plastic_s(nemo_simulation_t, synapse_id synapse, unsigned char* plastic);
-
-
 /*! \copydoc nemo_get_synapses_from_s */
 NEMO_DLL_PUBLIC
 nemo_status_t
@@ -627,36 +623,6 @@ nemo_set_neuron_n(nemo_network_t, unsigned idx, unsigned nargs, float args[]);
 NEMO_DLL_PUBLIC
 nemo_status_t
 nemo_set_neuron_s(nemo_simulation_t, unsigned idx, unsigned nargs, float args[]);
-
-
-/*! Modify the parameters/state for a single Izhikevich neuron during construction
- *
- * The neuron must already exist.
- *
- * \see nemo_add_neuron for parameters
- * \deprecated in favour of the generic nemo_set_neuron_n() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_set_neuron_iz_n(nemo_network_t net,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
-
-
-/*! Modify the parameters/state for a single Izhikevich neuron during simulation
- *
- * The neuron must already exist.
- *
- * \see nemo_add_neuron for parameters
- * \deprecated in favour of the generic nemo_set_neuron_s() function
- */
-NEMO_DLL_PUBLIC
-nemo_status_t
-nemo_set_neuron_iz_s(nemo_simulation_t sim,
-		unsigned idx,
-		float a, float b, float c, float d,
-		float u, float v, float sigma);
 
 
 /*! Modify a single state variable for a single neuron during construction

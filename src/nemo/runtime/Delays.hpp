@@ -1,5 +1,5 @@
-#ifndef NEMO_OUTGOING_DELAYS_HPP
-#define NEMO_OUTGOING_DELAYS_HPP
+#ifndef NEMO_RUNTIME_DELAYS_HPP
+#define NEMO_RUNTIME_DELAYS_HPP
 
 /* Copyright 2010 Imperial College London
  *
@@ -11,58 +11,30 @@
  */
 
 #include <vector>
-#include <map>
-#include <set>
 #include <boost/unordered_map.hpp>
 
 #include <nemo/internal_types.h>
 
 namespace nemo {
 
-/*! Per-neuron collection of outoing delays (accumulation) */
-class OutgoingDelaysAcc
-{
-	public :
+	namespace construction {
+		class Delays;
+	}
 
-		OutgoingDelaysAcc() : m_maxDelay(0) { }
-
-		/*! \param neuron global index 
-		 *  \param delay
-		 */
-		void addDelay(nidx_t neuron, delay_t delay) {
-			m_delays[neuron].insert(delay);
-			m_maxDelay = std::max(m_maxDelay, delay);
-		}
-
-		delay_t maxDelay() const { return m_maxDelay; }
-
-		void clear() { m_delays.clear() ; }
-	
-	private :
-
-		friend class OutgoingDelays;
-
-		std::map<nidx_t, std::set<delay_t> > m_delays;
-
-		delay_t m_maxDelay;
-};
-
+	namespace runtime {
 
 
 /*! Per-neuron collection of outgoing delays (run-time) */
-class OutgoingDelays
+class Delays
 {
 	public :
 
-		OutgoingDelays();
-
-		/*
-		 * \param maxIdx
-		 * 		max source neuron index which will be used for run-time queries
+		/*! Create a run-time represenation of the outgoing delays
+		 *
+		 * \param neuronCount
+		 * 		number of neurons in the network
 		 */
-		OutgoingDelays(const OutgoingDelaysAcc&);
-
-		void init(const OutgoingDelaysAcc&);
+		Delays(size_t neuronCount, const construction::Delays&);
 
 		delay_t maxDelay() const { return m_maxDelay; }
 
@@ -82,10 +54,8 @@ class OutgoingDelays
 		 */
 		const_iterator end(nidx_t neuron) const;
 
-		/*! \return a bitwise representation of the delays for a single source.
-		 * The least significant bit corresponds to a delay of 1 */
-		uint64_t delayBits(nidx_t source) const;
-		
+		const std::vector<uint64_t>& delayBits() const { return m_bits; }
+
 	private :
 
 		/*! \note Did some experimentation with replacing std::vector with raw
@@ -94,14 +64,23 @@ class OutgoingDelays
 		 * table */
 		boost::unordered_map<nidx_t, std::vector<delay_t> > m_data;
 
+		/* Delays stored in compact form, supporting up to 64 delays. One bit
+		 * per delay with LSb the lowest delay. */
+		std::vector<uint64_t> m_bits;
+
 		delay_t m_maxDelay;
 
-		OutgoingDelays(const OutgoingDelays& );
-		OutgoingDelays& operator=(const OutgoingDelays&);
+		Delays(const Delays& );
+		Delays& operator=(const Delays&);
 
 		bool hasSynapses(nidx_t source) const;
+
+		/*! \return a bitwise representation of the delays for a single source.
+		 * The least significant bit corresponds to a delay of 1 */
+		uint64_t delayBits(nidx_t source) const;
+
 };
 
-}
+}	}
 
 #endif

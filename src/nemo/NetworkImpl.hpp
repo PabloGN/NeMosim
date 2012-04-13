@@ -37,7 +37,9 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		NetworkImpl();
 
 		/*! \copydoc nemo::Network::addNeuronType */
-		unsigned addNeuronType(const std::string& name);
+		unsigned addNeuronType(const std::string& name,
+				unsigned nInputs,
+				const unsigned inputs[]);
 
 		/*! \copydoc nemo::Network::addNeuron */
 		void addNeuron(unsigned type, unsigned idx, unsigned nargs, const float args[]);
@@ -45,13 +47,16 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! \copydoc nemo::Network::setNeuron */
 		void setNeuron(unsigned idx, unsigned nargs, const float args[]);
 
+		/*! \copydoc nemo::Network::addSynapseType */
+		unsigned addSynapseType(const synapse_type&);
+
 		/*! \copydoc nemo::Network::addSynapse */
 		synapse_id addSynapse(
+				unsigned typeIdx,
 				unsigned source,
 				unsigned target,
 				unsigned delay,
-				float weight,
-				unsigned char plastic);
+				float weight);
 
 		/*! \copydoc nemo::Network::getNeuronState */
 		float getNeuronState(unsigned neuron, unsigned var) const;
@@ -73,9 +78,6 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 
 		/*! \copydoc nemo::Network::getSynapseWeight */
 		float getSynapseWeight(const synapse_id&) const;
-
-		/*! \copydoc nemo::Network::getSynapsePlastic */
-		unsigned char getSynapsePlastic(const synapse_id&) const;
 
 		/*! \copydoc nemo::Network::getSynapsesFrom */
 		const std::vector<synapse_id>& getSynapsesFrom(unsigned neuron);
@@ -103,21 +105,23 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! \copydoc nemo::Network::Generator::neuron_end */
 		neuron_iterator neuron_end(unsigned type) const;
 
-		synapse_iterator synapse_begin() const;
-		synapse_iterator synapse_end() const;
+		/*! \copydoc nemo::Network::Generator::synapseTypeCount */
+		unsigned synapseTypeCount() const;
+
+		synapse_iterator synapse_begin(unsigned type) const;
+
+		synapse_iterator synapse_end(unsigned type) const;
 
 		/*! \copydoc nemo::network::Generator::neuronType */
 		const NeuronType& neuronType(unsigned) const;
+
+		/*! \copydoc nemo::network::Generator::neuronInputs */
+		const std::vector<unsigned>& neuronInputs(unsigned) const;
 
 	private :
 
 		/* Neurons are grouped by neuron type */
 		std::vector<Neurons> m_neurons;
-
-		/* Users keep access neuron type groups by via indices (returned by \a
-		 * addNeuronType). For error-detecting purposes, keep the type name ->
-		 * index mapping */
-		std::map<std::string, unsigned> m_typeIds;
 
 		const Neurons& neuronCollection(unsigned type_id) const;
 		Neurons& neuronCollection(unsigned type_id);
@@ -133,7 +137,9 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		 * unordered_map */
 		typedef std::map<nidx_t, Axon> fcm_t;
 
-		fcm_t m_fcm;
+		//! \todo merge these two types
+		std::vector<fcm_t> m_fcm;
+		std::vector<synapse_type> m_synapses;
 
 		int m_minIdx;
 		int m_maxIdx;
@@ -146,7 +152,7 @@ class NEMO_BASE_DLL_PUBLIC NetworkImpl : public Generator, public ReadableNetwor
 		/*! Internal buffer for synapse queries */
 		std::vector<synapse_id> m_queriedSynapseIds;
 
-		const Axon& axon(nidx_t source) const;
+		const Axon& axon(nidx_t source, unsigned typeIdx) const;
 
 };
 

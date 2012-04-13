@@ -98,9 +98,6 @@ __device__
 void
 fx_arrSaturatedToFloat(
 		uint32_t* s_overflow, // bit-vector
-#ifndef NEMO_SINGLE_CURRENT
-		bool negative,
-#endif
 		fix_t* s_fix,
 		float* s_float,
 		unsigned scale)
@@ -112,11 +109,11 @@ fx_arrSaturatedToFloat(
 		s_float[nidx] = fx_tofloat(s_fix[nidx], scale);
 #else
 		bool overflow = bv_isSet(nidx, s_overflow);
-#ifdef NEMO_SINGLE_CURRENT
+
 		/* If overflow, sign will have changed. This won't work if the value
 		 * has overflowed several times. */
 		bool negative = !fx_isNegative(s_fix[nidx]);
-#endif
+
 		s_float[nidx] = fx_saturatedTofloat(s_fix[nidx], overflow, negative, scale);
 #ifdef NEMO_CUDA_PLUGIN_DEBUG_TRACE
 		if(overflow) {

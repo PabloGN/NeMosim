@@ -7,12 +7,13 @@ namespace nemo {
 void
 addNeurons(nemo::Network& net, unsigned ncount, bool izhikevich)
 {
-	unsigned input = net.addNeuronType("Input");
+	unsigned input = net.addNeuronType("Input", 0, NULL);
 	for(unsigned i=0; i<ncount; ++i) {
 		net.addNeuron(input, i, 0, NULL);
 	}
 	if(izhikevich) {
-		unsigned iz = net.addNeuronType("Izhikevich");
+		unsigned s = net.addSynapseType();
+		unsigned iz = net.addNeuronType("Izhikevich", 1, &s);
 		float param[7] = { 0.02f, 0.2f, -65.0f, 8.0f, 0.0f, 0.2f*-65.0f, -65.0f };
 		for(unsigned i=ncount; i<2*ncount; ++i) {
 			net.addNeuron(iz, i, 7, param);

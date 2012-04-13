@@ -15,6 +15,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <nemo.hpp>
+#include <nemo/izhikevich.hpp>
 #include "utils.hpp"
 
 /* The test network consists of two groups of the same size. Connections
@@ -123,7 +124,7 @@ delay(unsigned local)
 
 /* Return number of synapses per neuron */
 unsigned
-construct(nemo::Network& net, bool noiseConnections)
+construct(nemo::izhikevich::Network& net, bool noiseConnections)
 {
 	/* Neurons in the two groups have standard parameters and no spontaneous
 	 * firing */
@@ -142,10 +143,12 @@ construct(nemo::Network& net, bool noiseConnections)
 	 * spike is enough to induce firing in the postsynaptic neuron. */
 	for(unsigned local=0; local < groupSize; ++local) {
 		net.addSynapse(
+#warning "STDP synapse not set up correctly"
+				net.synapseType(), // this should be an STDP synapse type
 				globalIdx(0, local),
 				globalIdx(1, local),
 				delay(local),
-				initWeight, 1);
+				initWeight);
 	}
 	
 	/* To complicate spike delivery and STDP computation, add a number of
@@ -157,11 +160,14 @@ construct(nemo::Network& net, bool noiseConnections)
 		for(unsigned ltgt=0; ltgt < groupSize; ++ltgt) {
 			if(lsrc != ltgt) {
 				net.addSynapse(
+#warning "STDP synapse not set up correctly"
+						0U, // this should be an STDP synapse type
 						globalIdx(0, lsrc),
 						globalIdx(1, ltgt),
 						delay(ltgt + lsrc),
-						-0.00001f,
-						 ltgt & 0x1);
+						-0.00001f
+						 // ltgt & 0x1
+						 );
 			}
 		}
 	}
@@ -212,7 +218,6 @@ verifyWeightChange(unsigned epoch, nemo::Simulation* sim, unsigned m, float rewa
 
 			unsigned actualDelay = sim->getSynapseDelay(*id);
 			BOOST_REQUIRE_EQUAL(delay(localIdx(target)), actualDelay);
-			BOOST_REQUIRE(sim->getSynapsePlastic(*id));
 
 			/* dt is positive for pre-post pair, and negative for post-pre
 			 * pairs */ 
@@ -242,7 +247,7 @@ verifyWeightChange(unsigned epoch, nemo::Simulation* sim, unsigned m, float rewa
 void
 testStdp(backend_t backend, bool noiseConnections, float reward)
 {
-	nemo::Network net;
+	nemo::izhikevich::Network net;
 	unsigned m = construct(net, noiseConnections);
 	nemo::Configuration conf = configuration(backend);
 
@@ -338,12 +343,12 @@ testInvalidDynamicLength(bool stdp)
 		conf.setStdpFunction(pre, post, 0.01f,  1.0f, -0.01f, -1.0f);
 	}
 
-	nemo::Network net;
-	unsigned iz = net.addNeuronType("Izhikevich");
+	nemo::izhikevich::Network net;
 	float param[7] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-	net.addNeuron(iz, 0, 7, param);
-	net.addNeuron(iz, 1, 7, param);
-	net.addSynapse(0, 1, 34, 1.0, stdp);
+	net.addNeuron(0, 7, param);
+	net.addNeuron(1, 7, param);
+#warning "STDP synapse type not set correctly"
+	net.addSynapse(net.synapseType(), 0U, 1U, 34U, 1.0f /*, stdp*/);
 
 	boost::scoped_ptr<nemo::Simulation> sim;
 

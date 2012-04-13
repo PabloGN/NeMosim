@@ -21,17 +21,18 @@
 namespace nemo {
 
 
-NeuronType::NeuronType(const std::string& name) :
+NeuronType::NeuronType(const std::string& name, unsigned nInputs) :
 	m_nParam(0), m_nState(0),
 	m_name(name), m_membranePotential(0),
 	m_nrand(false),
+	m_nInputs(nInputs),
 	m_rcmSources(false),
 	m_rcmDelays(false),
 	m_rcmForward(false),
 	m_rcmWeights(false),
 	m_stateHistory(1)
 {
-	parseConfigurationFile(name);
+	parseConfigurationFile(name, nInputs);
 }
 
 
@@ -89,7 +90,7 @@ getRequired(boost::program_options::variables_map vm,
 
 
 void
-NeuronType::parseConfigurationFile(const std::string& name)
+NeuronType::parseConfigurationFile(const std::string& name, unsigned nInputs)
 {
 	using boost::format;
 	namespace po = boost::program_options;
@@ -106,6 +107,8 @@ NeuronType::parseConfigurationFile(const std::string& name)
 			"index of membrane potential variable")
 		("rng.normal", po::value<bool>(),
 			"is normal RNG required?")
+		("inputs", po::value<unsigned>(),
+			"number of synapse input types")
 		/* optional fields */
 		("rcm.sources", po::value<bool>()->default_value(false),
 			"are sources required in the reverse connectivity matrix")
@@ -143,6 +146,16 @@ NeuronType::parseConfigurationFile(const std::string& name)
 		m_nState = getRequired<unsigned>(vm, "state-variables", filename);
 		m_membranePotential = getRequired<unsigned>(vm, "membrane-potential", filename);
 		m_nrand = getRequired<bool>(vm, "rng.normal", filename);
+
+		nInputs = getRequired<unsigned>(vm, "inputs", filename);
+		if(m_nInputs != nInputs) {
+			throw nemo::exception(NEMO_INVALID_INPUT,
+					str(format("Requested number of inputs (%u) does not match expected number (%u) for neuron type %s")
+						% m_nInputs
+						% nInputs
+						% m_name));
+		}
+
 		m_rcmSources = vm["rcm.sources"].as<bool>();
 		m_rcmDelays = vm["rcm.delays"].as<bool>();
 		m_rcmForward = vm["rcm.forward"].as<bool>();

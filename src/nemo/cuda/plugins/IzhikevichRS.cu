@@ -72,8 +72,7 @@ updateNeurons(
 	float* g_neuronState,
 	uint32_t* s_valid,   // bitvector for valid neurons
 	// input
-	float* g_currentE,
-	float* g_currentI,
+	float* g_current,
 	float* s_currentExt,    // external input current
 	// buffers
 	uint32_t* s_fstim,
@@ -98,7 +97,7 @@ updateNeurons(
 			float a = 0.02f;
 			float b = 0.2f;
 
-			float I = g_currentE[neuron] + g_currentI[neuron] + s_currentExt[neuron];
+			float I = g_current[neuron] + s_currentExt[neuron];
 
 			/* n sub-steps for numerical stability, with u held */
 			bool fired = false;
@@ -187,9 +186,6 @@ updateNeurons(
 	__shared__ param_t s_params;
 	loadParameters(g_params, &s_params);
 
-	float* g_currentE = incomingExcitatory(g_current, globalPartitionCount, s_globalPartition, s_params.pitch32);
-	float* g_currentI = incomingInhibitory(g_current, globalPartitionCount, s_globalPartition, s_params.pitch32);
-
 	__shared__ float s_current[MAX_PARTITION_SIZE];
 	loadCurrentStimulus(s_globalPartition, s_partitionSize, s_params.pitch32, g_istim, s_current);
 
@@ -210,7 +206,7 @@ updateNeurons(
 			gf_neuronParameters + CURRENT_PARTITION * s_params.pitch32,
 			gf_neuronState,
 			s_valid,
-			g_currentE, g_currentI,
+			accumulator(g_current, globalPartitionCount, s_globalPartition, s_params.inputs[0], s_params.pitch32),
 			s_current, s_fstim,
 			&s_nFired,
 			s_fired);

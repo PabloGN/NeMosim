@@ -1,5 +1,5 @@
-#ifndef NEMO_CUDA_FIRING_DELAYS
-#define NEMO_CUDA_FIRING_DELAYS
+#ifndef NEMO_CUDA_RUNTIME_DELAYS_HPP
+#define NEMO_CUDA_RUNTIME_DELAYS_HPP
 
 /* Copyright 2010 Imperial College London
  *
@@ -17,9 +17,8 @@ namespace nemo {
 	namespace cuda {
 
 		namespace construction {
-			class FcmIndex;
+			class Delays;
 		}
-
 		namespace runtime {
 
 
@@ -38,13 +37,15 @@ namespace nemo {
  *
  * \todo set the width based on actual max delay (put the pitch in the global parameters)
  *
+ * \see nemo::cuda::construction::Delays
+ *
  * \author Andreas K. Fidjeland
  */
 class Delays
 {
 	public :
 
-		Delays(unsigned partitionCount, const construction::FcmIndex& index); 
+		Delays(const construction::Delays& h_delays);
 
 		/*! \return device pointer to delays data */
 		delay_dt* d_data() const { return md_data.get(); }

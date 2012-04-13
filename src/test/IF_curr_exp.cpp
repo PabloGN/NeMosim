@@ -16,7 +16,10 @@ void
 create(backend_t backend, unsigned duration, Types ntypes)
 {
 	Network net;
-	const unsigned IF_curr_exp = net.addNeuronType("IF_curr_exp");
+	const unsigned excitatory = net.addSynapseType();
+	const unsigned inhibitory = net.addSynapseType();
+	unsigned synapseTypes[2] = {excitatory, inhibitory};
+	const unsigned IF_curr_exp = net.addNeuronType("IF_curr_exp", 2, synapseTypes);
 
 	const float v_rest = -65.0f;
 	const float args[13] = {
@@ -26,8 +29,9 @@ create(backend_t backend, unsigned duration, Types ntypes)
 	net.addNeuron(IF_curr_exp, 0, 13, args);
 
 	if(ntypes == MULTIPLE) {
+		unsigned iz = net.addNeuronType("Izhikevich", 1, &excitatory);
 		/* This population will never fire */
-		createRing(&net, 1024, 1);
+		createRing(&net, iz, excitatory, 1024, 1);
 	}
 
 	Configuration conf = configuration(false, 1024, backend);
@@ -42,8 +46,6 @@ create(backend_t backend, unsigned duration, Types ntypes)
 
 
 BOOST_AUTO_TEST_SUITE(IF_curr_exp)
-	// BOOST_AUTO_TEST_CASE(create_s) { create(NEMO_BACKEND_CUDA, 1000, SINGLE); }
-	// BOOST_AUTO_TEST_CASE(create_m) { create(NEMO_BACKEND_CUDA, 1000, MULTIPLE); }
 	TEST_ALL_BACKENDS_N(create_s, nemo::test::IF_curr_exp::create, 1000, SINGLE)
 	TEST_ALL_BACKENDS_N(create_m, nemo::test::IF_curr_exp::create, 1000, MULTIPLE)
 BOOST_AUTO_TEST_SUITE_END()

@@ -1,32 +1,16 @@
 #include "Simulation.hpp"
 
-#include <cmath>
-
 #include <boost/format.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 
 #ifdef NEMO_CPU_OPENMP_ENABLED
 #include <omp.h>
 #endif
 
-#include <nemo/internals.hpp>
 #include <nemo/exception.hpp>
-#include <nemo/bitops.h>
-#include <nemo/fixedpoint.hpp>
+#include <nemo/internals.hpp>
+#include <nemo/synapse_indices.hpp>
 #include <nemo/ConnectivityMatrix.hpp>
 
-#ifdef NEMO_CPU_DEBUG_TRACE
-
-#include <cstdio>
-#include <cstdlib>
-
-#define LOG(...) fprintf(stdout, __VA_ARGS__);
-
-#else
-
-#define LOG(...)
-
-#endif
 
 
 namespace nemo {
@@ -37,13 +21,9 @@ Simulation::Simulation(
 		const nemo::network::Generator& net,
 		const nemo::ConfigurationImpl& conf) :
 	m_neuronCount(net.neuronCount()),
+	m_fractionalBits(conf.fractionalBits()),
 	m_fired(m_neuronCount, 0),
 	m_recentFiring(m_neuronCount, 0),
-	m_delays(m_neuronCount, 0),
-	mfx_currentE(m_neuronCount, 0U),
-	m_currentE(m_neuronCount, 0.0f),
-	mfx_currentI(m_neuronCount, 0U),
-	m_currentI(m_neuronCount, 0.0),
 	m_currentExt(m_neuronCount, 0.0f),
 	m_fstim(m_neuronCount, 0)
 {
@@ -72,10 +52,19 @@ Simulation::Simulation(
 		m_neurons.push_back(ns);
 	}
 
-	m_cm.reset(new nemo::ConnectivityMatrix(net, conf, m_mapper));
+	for(unsigned typeIdx=0; typeIdx < net.synapseTypeCount(); ++typeIdx) {
+		m_cm.push_back(cm_t(new nemo::ConnectivityMatrix(net, conf, m_mapper, typeIdx)));
+		m_accumulator.push_back(std::vector<float>(m_neuronCount, 0.0f));
+	}
 
-	for(size_t source=0; source < m_neuronCount; ++source) {
-		m_delays[source] = m_cm->delayBits(source);
+	for(unsigned n=0, n_end=net.neuronTypeCount(); n < n_end; ++n) {
+		std::vector<float*> ptrs;
+		const std::vector<unsigned>& inputs = net.neuronInputs(n);
+		for(std::vector<unsigned>::const_iterator i = inputs.begin();
+				i != inputs.end(); ++i) {
+			ptrs.push_back(&m_accumulator[*i][0]);
+		}
+		m_accumulatorPointers.push_back(ptrs);
 	}
 
 	resetTimer();
@@ -86,7 +75,7 @@ Simulation::Simulation(
 unsigned
 Simulation::getFractionalBits() const
 {
-	return m_cm->fractionalBits();
+	return m_fractionalBits;
 }
 
 
@@ -95,17 +84,27 @@ void
 Simulation::fire()
 {
 	deliverSpikes();
-	for(neuron_groups::const_iterator i = m_neurons.begin();
-			i != m_neurons.end(); ++i) {
-		(*i)->update(
+
+	unsigned ngIdx = 0;
+	for(neuron_groups::const_iterator ng = m_neurons.begin();
+			ng != m_neurons.end(); ++ng, ++ngIdx) {
+
+		//! \todo deal with use of the RCM here.
+		(*ng)->update(
 			m_timer.elapsedSimulation(), getFractionalBits(),
-			&m_currentE[0], &m_currentI[0], &m_currentExt[0],
+			&m_accumulatorPointers[ngIdx][0],
+			&m_currentExt[0],
 			&m_fstim[0], &m_recentFiring[0], &m_fired[0],
-			const_cast<void*>(static_cast<const void*>(m_cm->rcm())));
+			NULL
+#warning "Kuramoto plugin will not work"
+			//const_cast<void*>(static_cast<const void*>(m_cm->rcm()))
+			);
 	}
 
+#ifdef NEMO_STDP_ENABLED
 	//! \todo do this in the postfire step
 	m_cm->accumulateStdp(m_recentFiring);
+#endif
 	setFiring();
 	m_timer.step();
 }
@@ -114,7 +113,7 @@ Simulation::fire()
 
 #ifdef NEMO_BRIAN_ENABLED
 float*
-Simulation::propagate(uint32_t* fired, int nfired)
+Simulation::propagate(unsigned synapseTypeIdx, uint32_t* fired, int nfired)
 {
 	//! \todo assert that STDP is not enabled
 
@@ -129,12 +128,12 @@ Simulation::propagate(uint32_t* fired, int nfired)
 		uint32_t n = fired[i];
 		m_recentFiring[n] |= uint64_t(1);
 	}
-	deliverSpikes();
+
+	//! \todo error handling
+	m_cm.at(synapseTypeIdx)->deliverSpikes(elapsedSimulation(), m_recentFiring, m_accumulator.at(synapseTypeIdx));
 	m_timer.step();
 
-	/* When Brian extensions are enabled all accumulation goes into a single
-	 * variable, m_currentE. */ 
-	return &m_currentE[0];
+	return &m_accumulator[synapseTypeIdx][0];
 }
 #endif
 
@@ -252,7 +251,11 @@ Simulation::setNeuronParameter(unsigned g_idx, unsigned parameter, float val)
 void
 Simulation::applyStdp(float reward)
 {
+#ifdef NEMO_STDP_ENABLED
 	m_cm->applyStdp(reward);
+#else
+	throw nemo::exception(NEMO_API_UNSUPPORTED, "This version of NeMo does not support STDP");
+#endif
 }
 
 
@@ -260,59 +263,16 @@ Simulation::applyStdp(float reward)
 void
 Simulation::deliverSpikes()
 {
-	/* Ignore spikes outside of max delay. We keep these older spikes as they
-	 * may be needed for STDP */
-	uint64_t validSpikes = ~(((uint64_t) (~0)) << m_cm->maxDelay());
-
-	for(size_t source=0; source < m_neuronCount; ++source) {
-
-		uint64_t f = m_recentFiring[source] & validSpikes & m_delays[source];
-
-		int delay = 0;
-		while(f) {
-			int shift = 1 + ctz64(f);
-			delay += shift;
-			f = f >> shift;
-			deliverSpikesOne(source, delay);
-		}
-	}
-
-	/* convert current back to float */
-	unsigned fbits = getFractionalBits();
-	int ncount = boost::numeric_cast<int, unsigned>(m_neuronCount);
-#pragma omp parallel for default(shared)
-	for(int n=0; n < ncount; n++) {
-		m_currentE[n] = wfx_toFloat(mfx_currentE[n], fbits);
-		mfx_currentE[n] = 0U;
-#ifndef NEMO_SINGLE_CURRENT
-		m_currentI[n] = wfx_toFloat(mfx_currentI[n], fbits);
-		mfx_currentI[n] = 0U;
-#endif
+	size_t i = 0;
+	for(std::vector<cm_t>::iterator cm = m_cm.begin();
+			cm != m_cm.end(); ++cm, ++i) {
+		(*cm)->deliverSpikes(elapsedSimulation(),
+				m_recentFiring,
+				m_accumulator.at(i));
 	}
 }
 
 
-
-void
-Simulation::deliverSpikesOne(nidx_t source, delay_t delay)
-{
-	const nemo::Row& row = m_cm->getRow(source, delay);
-
-	for(unsigned s=0; s < row.len; ++s) {
-		const FAxonTerminal& terminal = row[s];
-#ifdef NEMO_SINGLE_CURRENT
-		std::vector<wfix_t>& current = mfx_currentE;
-#else
-		std::vector<wfix_t>& current = terminal.weight >= 0 ? mfx_currentE : mfx_currentI;
-#endif
-		current.at(terminal.target) += terminal.weight;
-		LOG("c%lu: n%u -> n%u: %+f (delay %u)\n",
-				elapsedSimulation(),
-				m_mapper.globalIdx(source),
-				m_mapper.globalIdx(terminal.target),
-				fx_toFloat(terminal.weight, getFractionalBits()), delay);
-	}
-}
 
 
 
@@ -348,7 +308,11 @@ Simulation::getMembranePotential(unsigned g_idx) const
 const std::vector<synapse_id>&
 Simulation::getSynapsesFrom(unsigned neuron)
 {
-	return m_cm->getSynapsesFrom(neuron);
+	m_queriedSynapseIds.clear();
+	for(std::vector<cm_t>::iterator cm = m_cm.begin(); cm != m_cm.end(); ++cm){
+		(*cm)->getSynapsesFrom(neuron, m_queriedSynapseIds);
+	}
+	return m_queriedSynapseIds;
 }
 
 
@@ -356,7 +320,7 @@ Simulation::getSynapsesFrom(unsigned neuron)
 unsigned
 Simulation::getSynapseTarget(const synapse_id& synapse) const
 {
-	return m_cm->getTarget(synapse);
+	return m_cm.at(typeIndex(synapse))->getTarget(synapse);
 }
 
 
@@ -364,7 +328,7 @@ Simulation::getSynapseTarget(const synapse_id& synapse) const
 unsigned
 Simulation::getSynapseDelay(const synapse_id& synapse) const
 {
-	return m_cm->getDelay(synapse);
+	return m_cm.at(typeIndex(synapse))->getDelay(synapse);
 }
 
 
@@ -372,15 +336,7 @@ Simulation::getSynapseDelay(const synapse_id& synapse) const
 float
 Simulation::getSynapseWeight(const synapse_id& synapse) const
 {
-	return m_cm->getWeight(synapse);
-}
-
-
-
-unsigned char
-Simulation::getSynapsePlastic(const synapse_id& synapse) const
-{
-	return m_cm->getPlastic(synapse);
+	return m_cm.at(typeIndex(synapse))->getWeight(synapse);
 }
 
 

@@ -30,7 +30,13 @@ class NEMO_BASE_DLL_PUBLIC Neurons
 {
 	public :
 		
-		Neurons(const NeuronType&);
+		/*! Create an empty neuron collection
+		 *
+		 * \param inputs
+		 * 		indices of the synapse types from which this neuron type
+		 * 		receives input.
+		 */
+		Neurons(const NeuronType&, const std::vector<unsigned>& inputs);
 
 		/*! Add a new neuron
 		 *
@@ -38,7 +44,7 @@ class NEMO_BASE_DLL_PUBLIC Neurons
 		 * \param nargs number of parameters and state variables
 		 * \param args all parameters and state variables (in that order)
 		 *
-		 * \return local index (wihtin this class) of the newly added neuron
+		 * \return local index (within this class) of the newly added neuron
 		 *
 		 * \pre the input arguments must have the lengths that was specified by
 		 * 		the neuron type used when this object was created.
@@ -77,6 +83,8 @@ class NEMO_BASE_DLL_PUBLIC Neurons
 		/*! \return neuron type common to all neurons in this collection */
 		const NeuronType& type() const { return m_type; }
 
+		const std::vector<unsigned>& inputs() const { return m_inputs; }
+
 	private :
 
 		/* Neurons are stored in several Structure-of-arrays, supporting
@@ -93,6 +101,9 @@ class NEMO_BASE_DLL_PUBLIC Neurons
 		size_t m_size;
 
 		NeuronType m_type;
+
+		/*! Indices of the synapse types from which this neuron type receives input. */
+		std::vector<unsigned> m_inputs;
 
 		/*! \return parameter index after checking its validity */
 		unsigned parameterIndex(unsigned i) const;

@@ -12,14 +12,13 @@ FUNCTION(PLUGIN PLUGIN_NAME)
 	INSTALL(TARGETS ${TARGET} DESTINATION ${NEMO_SYSTEM_PLUGIN_DIR}/cuda)
 ENDFUNCTION(PLUGIN)
 
+# Neuron models
 PLUGIN(Input)
 PLUGIN(PoissonSource)
 PLUGIN(Izhikevich)
 PLUGIN(IzhikevichRS)
 PLUGIN(Kuramoto)
+PLUGIN(IF_curr_exp)
 
-# Plugins which rely on separate excitatory and inhibitory currents are only
-# valid if we do indeed keep these separate.
-IF(NOT NEMO_SINGLE_CURRENT)
-	PLUGIN(IF_curr_exp)
-ENDIF(NOT NEMO_SINGLE_CURRENT)
+# Synapse models
+PLUGIN(AdditiveSynapse)

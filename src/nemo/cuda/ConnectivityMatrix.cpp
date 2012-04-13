@@ -23,6 +23,7 @@
 #include <nemo/construction/RCM.hpp>
 #include <nemo/cuda/construction/FcmIndex.hpp>
 #include <nemo/cuda/runtime/Delays.hpp>
+#include <nemo/cuda/construction/Delays.hpp>
 
 #include "exception.hpp"
 #include "fcm.cu_h"
@@ -39,14 +40,20 @@ namespace nemo {
 ConnectivityMatrix::ConnectivityMatrix(
 		const nemo::network::Generator& net,
 		const nemo::ConfigurationImpl& conf,
-		const Mapper& mapper) :
+		const Mapper& mapper,
+		const synapse_type& typeIdx,
+		nemo::cuda::construction::Delays& h_delays) :
+	m_typeIdx(typeIdx),
 	m_mapper(mapper),
 	m_maxDelay(0),
-	mhf_weights(WARP_SIZE, 0),
 	md_fcmPlaneSize(0),
 	md_fcmAllocated(0),
+	mhf_weights(WARP_SIZE, 0),
 	m_fractionalBits(conf.fractionalBits()),
-	m_writeOnlySynapses(conf.writeOnlySynapses())
+	m_writeOnlySynapses(conf.writeOnlySynapses()),
+	//! \todo get name from network
+	m_plugin("AdditiveSynapse", "cuda"),
+	m_gather((cuda_gather_t*) m_plugin.function("gather"))
 {
 	//! \todo change synapse_t, perhaps to nidx_dt
 	std::vector<synapse_t> hf_targets(WARP_SIZE, INVALID_FORWARD_SYNAPSE);
@@ -67,8 +74,8 @@ ConnectivityMatrix::ConnectivityMatrix(
 	 * needed, though, due the organisation in warp-sized chunks. */
 
 	size_t nextFreeWarp = 1; // leave space for null warp at beginning
-	for(network::synapse_iterator si = net.synapse_begin();
-			si != net.synapse_end(); ++si) {
+	for(network::synapse_iterator si = net.synapse_begin(typeIdx);
+			si != net.synapse_end(typeIdx); ++si) {
 		const Synapse& s = *si;
 		setMaxDelay(s);
 		DeviceIdx source = mapper.deviceIdx(s.source);
@@ -89,7 +96,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 
 	md_rcm = runtime::RCM(mapper.partitionCount(), h_rcm);
 
-	md_delays.reset(new runtime::Delays(mapper.partitionCount(), fcm_index));
+	h_delays.insert(fcm_index);
 
 	m_outgoing = Outgoing(mapper.partitionCount(), fcm_index);
 	m_gq.allocate(mapper.partitionCount(), m_outgoing.maxIncomingWarps(), 1.0);
@@ -202,13 +209,14 @@ ConnectivityMatrix::moveFcmToDevice(size_t totalWarps,
 	md_fcmPlaneSize = totalWarps * WARP_SIZE;
 	size_t bytes = md_fcmPlaneSize * 2 * sizeof(synapse_t);
 
-	void* d_fcm;
-	d_malloc(&d_fcm, bytes, "fcm");
-	md_fcm = boost::shared_ptr<synapse_t>(static_cast<synapse_t*>(d_fcm), d_free);
+	void* d_fcmData;
+	d_malloc(&d_fcmData, bytes, "fcm");
+	md_fcmData = boost::shared_ptr<synapse_t>(static_cast<synapse_t*>(d_fcmData), d_free);
+	md_fcm = fcm_dt(md_fcmData.get(), md_fcmPlaneSize);
 	md_fcmAllocated = bytes;
 
-	memcpyToDevice(md_fcm.get() + md_fcmPlaneSize * FCM_ADDRESS, h_targets, md_fcmPlaneSize);
-	memcpyToDevice(md_fcm.get() + md_fcmPlaneSize * FCM_WEIGHT,
+	memcpyToDevice(md_fcmData.get() + md_fcmPlaneSize * FCM_ADDRESS, h_targets, md_fcmPlaneSize);
+	memcpyToDevice(md_fcmData.get() + md_fcmPlaneSize * FCM_WEIGHT,
 			reinterpret_cast<const synapse_t*>(&h_weights[0]), md_fcmPlaneSize);
 }
 
@@ -222,7 +230,6 @@ ConnectivityMatrix::printMemoryUsage(std::ostream& out) const
 	out << "\tforward matrix: " << (md_fcmAllocated / MEGA) << "MB\n";
 	out << "\treverse matrix: " << (md_rcm.d_allocated() / MEGA) << "MB\n";
 	out << "\tglobal queue: " << (m_gq.allocated() / MEGA) << "MB\n";
-	out << "\tdelays: " << md_delays->allocated() / MEGA << "MB\n";
 	out << "\toutgoing: " << (m_outgoing.allocated() / MEGA) << "MB\n" << std::endl;
 }
 
@@ -249,8 +256,10 @@ ConnectivityMatrix::addAuxillary(const Synapse& s, size_t addr)
 
 
 
-const std::vector<synapse_id>&
-ConnectivityMatrix::getSynapsesFrom(unsigned source)
+void
+ConnectivityMatrix::getSynapsesFrom(
+		unsigned source,
+		std::vector<synapse_id>& queriedSynapseIds) const
 {
 	using boost::format;
 
@@ -275,13 +284,12 @@ ConnectivityMatrix::getSynapsesFrom(unsigned source)
 		nSynapses = iRow->second.size();
 	}
 
-	m_queriedSynapseIds.resize(nSynapses);
+	size_t bSynapse = queriedSynapseIds.size();
+	queriedSynapseIds.resize(bSynapse + nSynapses);
 
 	for(size_t iSynapse = 0; iSynapse < nSynapses; ++iSynapse) {
-		m_queriedSynapseIds[iSynapse] = make_synapse_id(source, iSynapse);
+		queriedSynapseIds[bSynapse + iSynapse] = make_synapse_id(source, m_typeIdx, iSynapse);
 	}
-
-	return m_queriedSynapseIds;
 }
 
 
@@ -292,7 +300,7 @@ ConnectivityMatrix::syncWeights(cycle_t cycle) const
 	if(cycle != m_lastWeightSync && !mhf_weights.empty()) {
 		//! \todo refine this by only doing the minimal amount of copying
 		memcpyFromDevice(reinterpret_cast<synapse_t*>(&mhf_weights[0]),
-					md_fcm.get() + FCM_WEIGHT * md_fcmPlaneSize,
+					md_fcmData.get() + FCM_WEIGHT * md_fcmPlaneSize,
 					md_fcmPlaneSize);
 		m_lastWeightSync = cycle;
 	}
@@ -345,13 +353,6 @@ ConnectivityMatrix::getDelay(const synapse_id& id) const
 }
 
 
-unsigned char
-ConnectivityMatrix::getPlastic(const synapse_id& id) const
-{
-	return axonTerminalAux(id).plastic();
-}
-
-
 void
 ConnectivityMatrix::clearStdpAccumulator()
 {
@@ -366,19 +367,30 @@ ConnectivityMatrix::d_allocated() const
 	return md_fcmAllocated
 		+ md_rcm.d_allocated()
 		+ m_gq.allocated()
-		+ md_delays->allocated()
 		+ m_outgoing.allocated();
 }
 
 
-
-void
-ConnectivityMatrix::setParameters(param_t* params) const
+cudaError_t
+ConnectivityMatrix::gather(
+		cudaStream_t stream,
+		unsigned cycle,
+		unsigned partitionCount,
+		unsigned* d_partitionSize,
+		param_t* d_globalParameters,
+		float* d_current)
 {
-	m_outgoing.setParameters(params);
-	params->fcmPlaneSize = md_fcmPlaneSize;
+	return m_gather(
+		stream,
+		cycle,
+		partitionCount,
+		d_partitionSize,
+		d_globalParameters,
+		d_current,
+		md_fcm,
+		m_gq.d_data(),
+		m_gq.d_fill());
 }
-
 
 
 	} // end namespace cuda
