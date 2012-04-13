@@ -1,4 +1,4 @@
-/*! \file gather.cu Gather kernel */
+/*! \file gather.cu gather kernel for additive synapses */
 
 /* Copyright 2010 Imperial College London
  *
@@ -9,17 +9,18 @@
  * licence along with nemo. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "types.h"
+#include "synapse_model.h"
 
-#include "log.cu_h"
-#include "fcm.cu_h"
+#include <nemo/cuda/types.h>
+#include <nemo/cuda/log.cu_h>
+#include <nemo/cuda/fcm.cu_h>
 
-#include "bitvector.cu"
-#include "double_buffer.cu"
-#include "fixedpoint.cu"
-#include "globalQueue.cu"
-#include "parameters.cu"
-#include "current.cu"
+#include <nemo/cuda/bitvector.cu>
+#include <nemo/cuda/double_buffer.cu>
+#include <nemo/cuda/fixedpoint.cu>
+#include <nemo/cuda/globalQueue.cu>
+#include <nemo/cuda/parameters.cu>
+#include <nemo/cuda/current.cu>
 
 
 /*! Gather incoming current from all spikes due for delivery \e now
@@ -178,7 +179,8 @@ gather( uint32_t cycle,
 
 
 
-__host__
+extern "C"
+NEMO_PLUGIN_DLL_PUBLIC
 cudaError_t
 gather( cudaStream_t stream,
 		unsigned cycle,
@@ -195,3 +197,6 @@ gather( cudaStream_t stream,
 	gather<<<dimGrid, dimBlock, 0, stream>>>(cycle, d_partitionSize, d_params, d_fcm, d_gqData, d_gqFill, d_current);
 	return cudaGetLastError();
 }
+
+
+cuda_gather_t* test_gather = &gather;

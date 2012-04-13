@@ -21,7 +21,9 @@
 #include <boost/unordered_map.hpp>
 
 #include <nemo/types.hpp>
+#include <nemo/Plugin.hpp>
 #include <nemo/network/Generator.hpp>
+#include <nemo/cuda/plugins/synapse_model.h>
 #include <nemo/cuda/runtime/RCM.hpp>
 
 #include "types.h"
@@ -239,6 +241,11 @@ class ConnectivityMatrix
 		void verifySynapseTerminals(const aux_map&, const Mapper& mapper);
 
 		const AxonTerminalAux& axonTerminalAux(const synapse_id& id) const;
+
+		/* The gather function itself is found in a plugin which is loaded
+		 * dynamically */
+		Plugin m_plugin;
+		cuda_gather_t* m_gather;
 };
 
 
