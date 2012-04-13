@@ -147,6 +147,7 @@ NeuronType::parseConfigurationFile(const std::string& name, unsigned nInputs)
 		m_membranePotential = getRequired<unsigned>(vm, "membrane-potential", filename);
 		m_nrand = getRequired<bool>(vm, "rng.normal", filename);
 
+#ifndef NEMO_BRIAN_ENABLED
 		nInputs = getRequired<unsigned>(vm, "inputs", filename);
 		if(m_nInputs != nInputs) {
 			throw nemo::exception(NEMO_INVALID_INPUT,
@@ -155,6 +156,7 @@ NeuronType::parseConfigurationFile(const std::string& name, unsigned nInputs)
 						% nInputs
 						% m_name));
 		}
+#endif
 
 		m_rcmSources = vm["rcm.sources"].as<bool>();
 		m_rcmDelays = vm["rcm.delays"].as<bool>();
