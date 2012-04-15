@@ -14,6 +14,7 @@ ENDFUNCTION(PLUGIN)
 PLUGIN(Input)
 PLUGIN(PoissonSource)
 PLUGIN(Izhikevich)
+PLUGIN(IF_curr_alpha)
 PLUGIN(IF_curr_exp)
 PLUGIN(Kuramoto)
 
