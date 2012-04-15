@@ -5,5 +5,6 @@ INSTALL(FILES
 		IzhikevichRS.ini
 		IF_curr_alpha.ini
 		IF_curr_exp.ini
+		IF_cond_exp.ini
 		Kuramoto.ini
 	DESTINATION ${NEMO_SYSTEM_PLUGIN_DIR})
