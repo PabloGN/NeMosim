@@ -86,9 +86,63 @@ def step(self, fstim=None, istim=None):
         else:
             return self.step_noinput()
 
-
-
 Simulation.step = step
+
+
+try:
+    import numpy as np
+    import array
+
+    def to_vector_arg(x):
+        """ Return a type readable as an optionally vectorised argument
+
+        The NeMo vectorised functions accept either a scalar or a sequence
+        type. A significant omission of this is numpy.ndarray, which is
+        converted in this function. If the input is *not* an ndarray, we simply
+        pass it through, which may result in errors from the boost::python
+        layer if the type is not valid.
+        """
+        if type(x) == np.ndarray:
+            # It seems that the numpy type codes and the array type codes match
+            y = array.array(x.dtype.char)
+            y.fromstring(x.data)
+            return y
+        else:
+            return x
+
+    def add_synapse(self, source, target, delay, weight, plastic):
+        """ Add one or more synapses to the network
+        
+        Inputs:
+        source -- Index of source neuron
+        target -- Index of target neuron
+        delay -- Synapse conductance delay in milliseconds
+        weight -- Synapse weights
+        plastic -- Boolean specifying whether or not this synapse is plastic
+        
+        Returns Unique synapse ID
+        
+        The input arguments can be any combination of scalars and vectors of
+        equal length. Vector arguments can be any sequence type (including
+        list) or a numpy.ndarray.  If the input arguments contain a mix of
+        scalars and lists the scalar arguments are effectively replicated the
+        required number of times.
+        """
+        return self.add_synapse_vec(
+            to_vector_arg(source),
+            to_vector_arg(target),
+            to_vector_arg(delay),
+            to_vector_arg(weight),
+            plastic)
+
+    Network.add_synapse = add_synapse
+
+except ImportError:
+    print("Warning: failed to lead either 'numpy' or 'array'. numpy vector arguments not supported")
+    Simulation.add_synapse = add_synapse_vec
+    Network.add_synapse = add_synapse_vec
+
+
 
 # Old synapse getters. These were originally vector-only, and were only exposed
 # for the simulation class. The new getters support both vector and scalar
