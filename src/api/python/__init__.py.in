@@ -137,10 +137,32 @@ try:
 
     Network.add_synapse = add_synapse
 
+    def add_neuron(self, type, idx, *args):
+        """ Add one or more neurons to the network
+        
+        Inputs:
+        type -- Neuron type
+        idx -- Neuron index
+        *args -- all neuron parameters followed by all state variables
+        
+        The meaning of the parameters and state variables varies depending on the
+        neuron type. This function may be called either in a scalar or vector
+        form. In the scalar form all inputs are scalars. In the vector form,
+        the neuron index argument plus any number of the other arguments are
+        sequences (which could be lists) or numpy.ndarrays of the same length.
+        In this second form scalar inputs are replicated the appropriate
+        number of times
+        """
+        vargs = [to_vector_arg(x) for x in args]
+        return self.add_neuron_vec(type, idx, *vargs)
+
+    Network.add_neuron = add_neuron
+
+
 except ImportError:
     print("Warning: failed to lead either 'numpy' or 'array'. numpy vector arguments not supported")
-    Simulation.add_synapse = add_synapse_vec
     Network.add_synapse = add_synapse_vec
+    Network.add_neuron = add_neuron_vec
 
 
 

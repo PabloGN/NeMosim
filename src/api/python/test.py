@@ -137,6 +137,8 @@ class TestFunctions(unittest.TestCase):
         s = arg(vlen, random.random)
         vectorized = any(isinstance(x, list) or isinstance(x, np.ndarray) for x in [a, b, c, d, u, v, s])
         if vectorized:
+            #if isinstance(a, np.ndarray):
+            #    print 'ndarray', a[0]
             fun(range(vlen), a, b, c, d, s, u, v)
         else:
             fun(random.randint(0,1000), a, b, c, d, s, u, v)
@@ -152,6 +154,13 @@ class TestFunctions(unittest.TestCase):
         for test in range(1000):
             net = IzNetwork()
             self.check_neuron_function(net.add_neuron, ncount=1000)
+
+    def test_add_neuron_numpy(self):
+        net = nemo.Network()
+        ntype = net.add_neuron_type('Izhikevich')
+        a = np.zeros((5,))
+        d = np.zeros((5,))
+        net.add_neuron(ntype, range(5), a, 0., 0., d, 0., 0., 0.)
 
     def test_set_neuron(self):
         """
