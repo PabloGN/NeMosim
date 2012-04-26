@@ -8,7 +8,6 @@
  */
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/format.hpp>
 
@@ -49,6 +48,13 @@ configurationFile(const std::string& name)
 {
 	using boost::format;
 	using namespace boost::filesystem;
+
+	for(Plugin::path_iterator i = Plugin::extraPaths_begin(); i != Plugin::extraPaths_end(); ++i ) {
+		path extraPath = *i / (name + ".ini");
+		if(exists(extraPath)) {
+			return extraPath;
+		}
+	}
 
 	path userPath = Plugin::userDirectory() / (name + ".ini");
 	if(exists(userPath)) {
@@ -121,6 +127,8 @@ NeuronType::parseConfigurationFile(const std::string& name, unsigned nInputs)
 	;
 
 	fs::path filename = configurationFile(name);
+
+	m_pluginDir = filename.parent_path();
 
 	fs::fstream file(filename, std::ios::in);
 	if(!file.is_open()) {

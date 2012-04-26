@@ -167,7 +167,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		const std::vector<uint64_t>& delayBits() const;
 
 		/*! \return pointer to reverse connectivity matrix */
-		const runtime::RCM* rcm() const { return &m_rcm; }
+		const runtime::RCM* rcm() const { return m_rcm.get(); }
 
 		/*! Deliver all spikes currently due
 		 *
@@ -201,7 +201,7 @@ class NEMO_BASE_DLL_PUBLIC ConnectivityMatrix
 		std::vector<Row> m_cm;
 		void finalizeForward(const mapper_t&, bool verifySources, construction::Delays& delays);
 
-		runtime::RCM m_rcm;
+		boost::scoped_ptr<runtime::RCM> m_rcm;
 
 		boost::optional<StdpProcess> m_stdp;
 
