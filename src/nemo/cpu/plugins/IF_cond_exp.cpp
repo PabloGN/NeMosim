@@ -32,8 +32,7 @@ cpu_update_neurons(
 		unsigned fbits,
 		unsigned fstim[],
 		RNG rng[],
-		float currentEPSP[],
-		float currentIPSP[],
+		float* accumulators[],
 		float currentExternal[],
 		uint64_t recentFiring[],
 		unsigned fired[],
@@ -72,6 +71,9 @@ cpu_update_neurons(
 
 	int nn = end-start;
 	assert(nn >= 0);
+
+	const float* currentEPSP = accumulators[0];
+	const float* currentIPSP = accumulators[1];
 
 #pragma omp parallel for default(shared)
 	for(int nl=0; nl < nn; nl++) {
@@ -131,4 +133,4 @@ cpu_update_neurons_t* test = &cpu_update_neurons;
 
 #include "default_init.c"
 
-#endif[nl]
+#endif

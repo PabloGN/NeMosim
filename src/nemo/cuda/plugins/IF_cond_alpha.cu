@@ -207,8 +207,8 @@ updateNeurons(
 	__shared__ param_t s_params;
 	loadParameters(g_params, &s_params);
 
-	float* g_currentE = incomingExcitatory(g_current, globalPartitionCount, s_globalPartition, s_params.pitch32);
-	float* g_currentI = incomingInhibitory(g_current, globalPartitionCount, s_globalPartition, s_params.pitch32);
+	float* g_currentE = accumulator(g_current, globalPartitionCount, s_globalPartition, s_params.inputs[0], s_params.pitch32);
+	float* g_currentI = accumulator(g_current, globalPartitionCount, s_globalPartition, s_params.inputs[1], s_params.pitch32);
 
 	__shared__ float s_current[MAX_PARTITION_SIZE];
 	loadCurrentStimulus(s_globalPartition, s_partitionSize, s_params.pitch32, g_istim, s_current);

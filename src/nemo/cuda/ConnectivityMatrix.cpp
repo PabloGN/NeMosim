@@ -53,7 +53,7 @@ ConnectivityMatrix::ConnectivityMatrix(
 	m_writeOnlySynapses(conf.writeOnlySynapses()),
 	//! \todo get plugin name from network
 	//! \todo add support for plugins from outside system plugin directory
-	m_plugin("AdditiveSynapse", "cuda"),
+	m_plugin(Plugin::systemDirectory() / "cuda", "AdditiveSynapse"),
 	m_gather((cuda_gather_t*) m_plugin.function("gather"))
 {
 	//! \todo change synapse_t, perhaps to nidx_dt
