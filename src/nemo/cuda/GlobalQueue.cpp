@@ -65,7 +65,8 @@ GlobalQueue::allocate(size_t partitionCount, size_t maxIncomingWarps, double siz
 	 * anyway. The queue heads must be used to determine what's valid data */
 
 	size_t wpitch = bpitch / sizeof(gq_entry_t);
-	CUDA_SAFE_CALL(setGlobalQueuePitch(wpitch));
+
+	md_gq = gq_dt(md_buffer.get(), md_fill.get(), wpitch);
 }
 
 	} // end namespace cuda

@@ -21,8 +21,7 @@ typedef cudaError_t cuda_gather_t(
 		param_t* d_globalParameters,
 		float* d_current,
 		const fcm_dt& d_fcm,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill);
+		gq_dt d_gq);
 
 #ifdef __cplusplus
 }

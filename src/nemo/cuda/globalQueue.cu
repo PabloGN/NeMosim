@@ -14,26 +14,15 @@
 #include "globalQueue.cu_h"
 
 
-__constant__ size_t c_gqPitch; // word pitch
-
-
-__host__
-cudaError
-setGlobalQueuePitch(size_t pitch)
-{
-	return cudaMemcpyToSymbol(c_gqPitch,
-				&pitch, sizeof(size_t), 0, cudaMemcpyHostToDevice);
-}
-
 
 
 /*! Return offset into full buffer data structure to beginning of buffer for a
  * particular targetPartition and a particular delay. */
 __device__
 unsigned
-gq_bufferStart(unsigned targetPartition, unsigned slot)
+gq_bufferStart(unsigned targetPartition, unsigned slot, size_t pitch)
 {
-	return (targetPartition * 2 + slot) * c_gqPitch;
+	return (targetPartition * 2 + slot) * pitch;
 }
 
 
@@ -46,9 +35,9 @@ gq_bufferStart(unsigned targetPartition, unsigned slot)
  */
 __device__
 gq_entry_t
-gq_read(unsigned slot, unsigned offset, gq_entry_t* g_queue)
+gq_read(unsigned slot, unsigned offset, const gq_dt& gq)
 {
-	return g_queue[gq_bufferStart(CURRENT_PARTITION, slot) + offset];
+	return gq.data[gq_bufferStart(CURRENT_PARTITION, slot, gq.pitch) + offset];
 }
 
 

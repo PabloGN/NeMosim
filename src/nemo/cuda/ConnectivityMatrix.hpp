@@ -143,10 +143,7 @@ class ConnectivityMatrix
 		const outgoing_dt& d_outgoing() const { return m_outgoing.d_data(); }
 
 		/*! \copydoc nemo::cuda::GlobalQueue::d_data */
-		gq_entry_t* d_gqData() const { return m_gq.d_data(); }
-
-		/*! \copydoc nemo::cuda::GlobalQueue::d_fill */
-		unsigned* d_gqFill() const { return m_gq.d_fill(); }
+		gq_dt& d_gqData() { return m_gq.d_data(); }
 
 		void printMemoryUsage(std::ostream&) const;
 

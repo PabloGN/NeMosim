@@ -17,8 +17,28 @@
 /*! The global queue contains synapse warp indices */
 typedef unsigned gq_entry_t;
 
-/*! Set the global queue pitch, i.e. the number of words in each source/target
- * partition-specific queue */
-__host__ cudaError setGlobalQueuePitch(size_t wordPitch);
+
+/*! Kernel-side data structure for the global queue
+ *
+ * This is only used for parameter passing. The actual data is managed by the
+ * class GlobalQueue.
+ */
+struct gq_dt {
+
+	gq_dt() : pitch(0) { }
+
+	gq_dt(gq_entry_t* data, unsigned* fill, size_t pitch) :
+		data(data), fill(fill), pitch(pitch) { }
+
+	/* The actual queue data */
+	gq_entry_t* data;
+
+	/* fill level (in words) for each source/target partition-specific queue.
+	 * 'fill' is an array with one entry for each such queue. */
+	unsigned* fill;
+
+	/*! number of words in each source/target partition-specific queue */
+	size_t pitch;
+};
 
 #endif
