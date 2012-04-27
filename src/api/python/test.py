@@ -3,6 +3,7 @@
 import unittest
 import random
 import nemo
+import numpy as np
 
 class IzNetwork(nemo.Network):
 
@@ -39,11 +40,16 @@ def randomStateIndex():
 
 def arg(vlen, gen):
     """
-    Return either a fixed-length vector or a scalar, with values drawn from 'gen'
+    Return either a fixed-length list or a scalar, with values drawn from 'gen'
     """
     vector = random.choice([True, False])
     if vector:
-        return [gen() for n in range(vlen)]
+        array = random.choice([True, False])
+        xs = [gen() for n in range(vlen)]
+        if type(xs[0]) != bool and array:
+            return np.array(xs)
+        else:
+            return xs
     else:
         return gen()
 
@@ -131,27 +137,38 @@ class TestFunctions(unittest.TestCase):
         u = arg(vlen, random.random)
         v = arg(vlen, random.random)
         s = arg(vlen, random.random)
-        vectorized = any(isinstance(x, list) for x in [a, b, c, d, u, v, s])
+        vectorized = any(isinstance(x, list) or isinstance(x, np.ndarray) for x in [a, b, c, d, u, v, s])
         if vectorized:
+            #if isinstance(a, np.ndarray):
+            #    print 'ndarray', a[0]
             fun(range(vlen), a, b, c, d, s, u, v)
         else:
             fun(random.randint(0,1000), a, b, c, d, s, u, v)
 
+            # todo: verify that we get an error if we don't have index matching vector args
+
     def test_add_neuron(self):
         """
         The add_neuron method supports either vector or scalar input. This
-        test calls set_synapse in a large number of ways, checking for
-        catastrophics failures in the boost::python layer
+        test calls add_neuron in a large number of ways, checking for
+        catastrophic failures in the boost::python layer
         """
         for test in range(1000):
             net = IzNetwork()
             self.check_neuron_function(net.add_neuron, ncount=1000)
 
+    def test_add_neuron_numpy(self):
+        net = nemo.Network()
+        ntype = net.add_neuron_type('Izhikevich')
+        a = np.zeros((5,))
+        d = np.zeros((5,))
+        net.add_neuron(ntype, range(5), a, 0., 0., d, 0., 0., 0.)
+
     def test_set_neuron(self):
         """
         The set_neuron method supports either vector or scalar input. This
         test calls set_synapse in a large number of ways, checking for
-        catastrophics failures in the boost::python layer
+        catastrophic failures in the boost::python layer
         """
         net = IzNetwork()
         ncount = 1000
@@ -299,7 +316,7 @@ class TestFunctions(unittest.TestCase):
             delay = arg(vlen, randomDelay)
             weight = arg(vlen, randomWeight)
             ids = net.add_synapse(source, target, delay, weight)
-            vectorized = any(isinstance(n, list) for n in [source, target, delay, weight])
+            vectorized = any(isinstance(n, list) or isinstance(n, np.ndarray) for n in [source, target, delay, weight])
             if vectorized:
                 self.assertTrue(isinstance(ids, list))
                 self.assertEqual(len(ids), vlen)

@@ -17,8 +17,11 @@ PLUGIN(Input)
 PLUGIN(PoissonSource)
 PLUGIN(Izhikevich)
 PLUGIN(IzhikevichRS)
-PLUGIN(Kuramoto)
+PLUGIN(IF_curr_alpha)
 PLUGIN(IF_curr_exp)
+PLUGIN(IF_cond_alpha)
+PLUGIN(IF_cond_exp)
+PLUGIN(Kuramoto)
 
 # Synapse models
 PLUGIN(AdditiveSynapse)
