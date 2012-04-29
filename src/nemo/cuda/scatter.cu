@@ -164,8 +164,7 @@ scatterGlobal_(unsigned cycle,
 		lq_entry_t* g_lq,
 		//const outgoing_dt& g_outgoing,
 		outgoing_dt g_outgoing,
-		unsigned* g_gqFill,
-		gq_entry_t* g_gqData)
+		gq_dt gq)
 {
 	__shared__ unsigned s_fill[MAX_PARTITION_COUNT]; // 512
 	__shared__ param_t s_params;
@@ -261,20 +260,20 @@ scatterGlobal_(unsigned cycle,
 			/* Update s_fill to store actual offset */
 			if(threadIdx.x < PARTITION_COUNT) {
 				size_t fillAddr = gq_fillOffset(threadIdx.x, writeBuffer(cycle));
-				s_fill[threadIdx.x] = atomicAdd(g_gqFill + fillAddr, s_fill[threadIdx.x]);
+				s_fill[threadIdx.x] = atomicAdd(gq.fill + fillAddr, s_fill[threadIdx.x]);
 			}
 			__syncthreads();
 
 			if(valid) {
 				unsigned offset = s_fill[targetPartition] + localOffset;
-				size_t base = gq_bufferStart(targetPartition, writeBuffer(cycle));
-				ASSERT(offset < c_gqPitch);
-				ASSERT(base < 2 * PARTITION_COUNT * c_gqPitch);
-				g_gqData[base + offset] = warpOffset;
+				size_t base = gq_bufferStart(targetPartition, writeBuffer(cycle), gq.pitch);
+				ASSERT(offset < gq.pitch);
+				ASSERT(base < 2 * PARTITION_COUNT * gq.pitch);
+				gq.data[base + offset] = warpOffset;
 				DEBUG_MSG_SYNAPSE("c%u[global scatter]: enqueued warp %u (p%un%u -> p%u with d%u) to global queue (buffer entry %u/%lu)\n",
 						cycle, warpOffset,
 						CURRENT_PARTITION, s_lq[jLq].x, targetPartition, s_lq[jLq].y,
-						offset, c_gqPitch);
+						offset, gq.pitch);
 				/* The writes to the global queue are non-coalesced. It would
 				 * be possible to stage this data in smem for each partition.
 				 * However, this would require a fair amount of smem (1), and
@@ -299,10 +298,9 @@ scatterGlobal(unsigned cycle,
 		unsigned* g_lqFill,
 		lq_entry_t* g_lq,
 		outgoing_dt g_outgoing,
-		unsigned* g_gqFill,
-		gq_entry_t* g_gqData)
+		gq_dt gq)
 {
-	scatterGlobal_(cycle, g_params, g_lqFill, g_lq, g_outgoing, g_gqFill, g_gqData);
+	scatterGlobal_(cycle, g_params, g_lqFill, g_lq, g_outgoing, gq);
 }
 
 
@@ -311,8 +309,7 @@ void
 scatter(uint32_t cycle,
 		param_t* g_params,
 		outgoing_dt g_outgoing,
-		gq_entry_t* g_gqData,      // pitch = c_gqPitch
-		unsigned* g_gqFill,
+		gq_dt gq,
 		lq_entry_t* g_lqData,      // pitch = c_lqPitch
 		unsigned* g_lqFill,
 		delay_dt g_ndData[],
@@ -322,8 +319,7 @@ scatter(uint32_t cycle,
 {
 	scatterLocal_(cycle, g_params, g_nFired, g_fired,
 			g_ndFill, g_ndData, g_lqFill, g_lqData);
-	scatterGlobal_(cycle, g_params, g_lqFill, g_lqData,
-			g_outgoing, g_gqFill, g_gqData);
+	scatterGlobal_(cycle, g_params, g_lqFill, g_lqData, g_outgoing, gq);
 }
 
 
@@ -338,8 +334,7 @@ scatter(cudaStream_t stream,
 		unsigned* d_nFired,
 		nidx_dt* d_fired,
 		const outgoing_dt& d_outgoing,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill,
+		gq_dt d_gq,
 		lq_entry_t* d_lqData,
 		unsigned* d_lqFill,
 		delay_dt d_ndData[],
@@ -352,8 +347,7 @@ scatter(cudaStream_t stream,
 			cycle,
 			d_globalParameters,
 			// spike delivery
-			d_outgoing,
-			d_gqData, d_gqFill,
+			d_outgoing, d_gq,
 			d_lqData, d_lqFill, 
 			d_ndData, d_ndFill,
 			// firing data
@@ -394,8 +388,7 @@ scatterGlobal(cudaStream_t stream,
 		unsigned partitionCount,
 		param_t* d_globalParameters,
 		const outgoing_dt& d_outgoing,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill,
+		gq_dt& d_gq,
 		lq_entry_t* d_lqData,
 		unsigned* d_lqFill)
 {
@@ -403,7 +396,7 @@ scatterGlobal(cudaStream_t stream,
 	dim3 dimGrid(partitionCount);
 	scatterGlobal<<<dimGrid, dimBlock, 0, stream>>>(
 			cycle, d_globalParameters, d_lqFill, d_lqData,
-			d_outgoing, d_gqFill, d_gqData);
+			d_outgoing, d_gq);
 	return cudaGetLastError();
 }
 

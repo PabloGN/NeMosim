@@ -58,11 +58,8 @@ class GlobalQueue
 				size_t maxIncomingWarps,
 				double sizeMultiplier = 1.0);
 
-		/*! \return device pointer to beginning of queue data */
-		gq_entry_t* d_data() const { return md_buffer.get(); }
-
-		/*! \return device pointer to beginning of queue fill data */
-		unsigned* d_fill() const { return md_fill.get(); }
+		/*! \return device pointers to global queue data */
+		gq_dt& d_data() { return md_gq; }	
 
 		/*! \return bytes of allocated memory */
 		size_t allocated() const { return mb_allocated; }
@@ -76,6 +73,9 @@ class GlobalQueue
 		boost::shared_ptr<unsigned> md_fill;
 
 		size_t mb_allocated;
+
+		/* POD struct for passing parameters to kernel */
+		gq_dt md_gq;
 };
 
 	} // end namespace cuda

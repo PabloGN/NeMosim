@@ -51,19 +51,6 @@ applyStdp(
 		float reward);
 
 
-cudaError_t
-gather( cudaStream_t stream,
-		unsigned cycle,
-		unsigned partitionCount,
-		unsigned* d_partitionSize,
-		param_t* d_globalParameters,
-		float* d_current,
-		const fcm_dt& d_fcm,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill);
-
-
-
 
 /*! Perform local scatter step */
 cudaError_t
@@ -87,8 +74,7 @@ scatterGlobal(cudaStream_t stream,
 		unsigned partitionCount,
 		param_t* d_globalParameters,
 		const outgoing_dt& d_outgoing,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill,
+		gq_dt& d_gq,
 		lq_entry_t* d_lqData,
 		unsigned* d_lqFill);
 

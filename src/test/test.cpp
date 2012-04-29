@@ -550,6 +550,7 @@ BOOST_AUTO_TEST_SUITE(ring_tests)
 	// less than a single partition on CUDA backend
 	TEST_ALL_BACKENDS_N(n1000, runRing, 1000, 1);
 
+#if 0
 	// exactly one partition on CUDA backend
 	TEST_ALL_BACKENDS_N(n1024, runRing, 1024, 1);
 
@@ -560,6 +561,7 @@ BOOST_AUTO_TEST_SUITE(ring_tests)
 	TEST_ALL_BACKENDS_N(n2000d20, runRing, 2000, 20); // ditto
 	TEST_ALL_BACKENDS_N(n2000d80, runRing, 2000, 80); // ditto
 	TEST_ALL_BACKENDS_N(delays, runDoubleRing, false);
+#endif
 BOOST_AUTO_TEST_SUITE_END()
 
 
