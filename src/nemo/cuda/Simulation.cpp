@@ -384,7 +384,6 @@ Simulation::postfire()
 				m_params->d_data(),
 				(*cm)->d_outgoing(),
 				(*cm)->d_gqData(),
-				(*cm)->d_gqFill(),
 				m_lq.d_data(),
 				m_lq.d_fill()
 			));

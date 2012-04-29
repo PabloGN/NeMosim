@@ -389,8 +389,7 @@ ConnectivityMatrix::gather(
 		d_globalParameters,
 		d_current,
 		md_fcm,
-		m_gq.d_data(),
-		m_gq.d_fill());
+		m_gq.d_data());
 }
 
 

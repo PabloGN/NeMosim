@@ -32,10 +32,8 @@
  * 		Current cycle
  * \param[in] fcm
  *		Forward connectivity matrix in global memory
- * \param[in] g_gqFill
- *		Fill rate for global queue
- * \param[in] g_gqData
- *		Pointer to full global memory double-buffered global queue
+ * \param gq
+ *		Global queue in global memory
  * \param[out] s_current
  *		per-neuron vector with accumulated current in fixed point format.
  */
@@ -44,8 +42,7 @@ void
 gather( unsigned cycle,
 		const param_t& s_params,
 		fcm_dt& fcm,
-		gq_entry_t* g_gqData,
-		unsigned* g_gqFill,
+		gq_dt& gq,
 		float sf_current[])
 {
 	/* Per-neuron bit-vectors. See bitvector.cu for accessors */
@@ -66,8 +63,8 @@ gather( unsigned cycle,
 	__shared__ unsigned s_incomingCount;
 	if(threadIdx.x == 0) {
 		size_t addr = gq_fillOffset(CURRENT_PARTITION, readBuffer(cycle));
-		s_incomingCount = g_gqFill[addr];
-		g_gqFill[addr] = 0;
+		s_incomingCount = gq.fill[addr];
+		gq.fill[addr] = 0;
 	}
 	__syncthreads();
 
@@ -91,7 +88,7 @@ gather( unsigned cycle,
 		__syncthreads();
 
 		if(threadIdx.x < s_groupSize) {
-			gq_entry_t sgin = gq_read(readBuffer(cycle), group, g_gqData);
+			gq_entry_t sgin = gq_read(readBuffer(cycle), group, gq);
 			s_warpAddress[threadIdx.x] = fcm.data + gq_warpOffset(sgin) * WARP_SIZE;
 			DEBUG_MSG_SYNAPSE("c%u w%u -> p%u\n", cycle, gq_warpOffset(sgin), CURRENT_PARTITION);
 		}
@@ -140,8 +137,7 @@ gather( uint32_t cycle,
 		unsigned* g_partitionSize,
 		param_t* g_params,
 		fcm_dt fcm,
-		gq_entry_t* g_gqData,      // pitch = c_gqPitch
-		unsigned* g_gqFill,
+		gq_dt gq,
 		float* g_current)
 {
 	__shared__ float s_current[MAX_PARTITION_SIZE];
@@ -159,7 +155,7 @@ gather( uint32_t cycle,
 	} // sync done in loadParameters
 	loadParameters(g_params, &s_params);
 
-	gather(cycle, s_params, fcm, g_gqData, g_gqFill, s_current);
+	gather(cycle, s_params, fcm, gq, s_current);
 
 	/* Write back to global memory The global memory roundtrip is so that the
 	 * gather and fire steps can be done in separate kernel invocations.
@@ -189,12 +185,11 @@ gather( cudaStream_t stream,
 		param_t* d_params,
 		float* d_current,
 		const fcm_dt& d_fcm,
-		gq_entry_t* d_gqData,
-		unsigned* d_gqFill)
+		gq_dt d_gq)
 {
 	dim3 dimBlock(THREADS_PER_BLOCK);
 	dim3 dimGrid(partitionCount);
-	gather<<<dimGrid, dimBlock, 0, stream>>>(cycle, d_partitionSize, d_params, d_fcm, d_gqData, d_gqFill, d_current);
+	gather<<<dimGrid, dimBlock, 0, stream>>>(cycle, d_partitionSize, d_params, d_fcm, d_gq, d_current);
 	return cudaGetLastError();
 }
 
