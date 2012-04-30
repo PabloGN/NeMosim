@@ -159,7 +159,8 @@ class TestFunctions(unittest.TestCase):
 
     def test_add_neuron_numpy(self):
         net = nemo.Network()
-        ntype = net.add_neuron_type('Izhikevich')
+        stype = net.add_synapse_type()
+        ntype = net.add_neuron_type('Izhikevich', [stype])
         a = np.zeros((5,))
         d = np.zeros((5,))
         net.add_neuron(ntype, range(5), a, 0., 0., d, 0., 0., 0.)

@@ -115,7 +115,7 @@ try:
         else:
             return x
 
-    def add_synapse(self, source, target, delay, weight, plastic):
+    def add_synapse(self, types, source, target, delay, weight, get_id=True):
         """ Add one or more synapses to the network
         
         Inputs:
@@ -123,9 +123,9 @@ try:
         target -- Index of target neuron
         delay -- Synapse conductance delay in milliseconds
         weight -- Synapse weights
-        plastic -- Boolean specifying whether or not this synapse is plastic
+        get_id -- return the synapse id
         
-        Returns Unique synapse ID
+        Returns Unique synapse ID if get_id is True, otherwise returns None
         
         The input arguments can be any combination of scalars and vectors of
         equal length. Vector arguments can be any sequence type (including
@@ -134,11 +134,12 @@ try:
         required number of times.
         """
         return self.add_synapse_vec(
+            to_vector_arg(types),
             to_vector_arg(source),
             to_vector_arg(target),
             to_vector_arg(delay),
             to_vector_arg(weight),
-            plastic)
+            get_id)
 
     Network.add_synapse = add_synapse
 
@@ -166,7 +167,10 @@ try:
 
 except ImportError:
     print("Warning: failed to lead either 'numpy' or 'array'. numpy vector arguments not supported")
-    Network.add_synapse = add_synapse_vec
+    # todo: add docstrings here
+    def add_synapse(self, source, target, delay, weight, get_id=True):
+        return self.add_synapse_vec(types, source, target, delay, weight, get_id)
+    Network.add_synapse = add_synapse
     Network.add_neuron = add_neuron_vec
 
 
