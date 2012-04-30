@@ -270,10 +270,14 @@ add_synapse(nemo::Network& net,
 					extract<unsigned>(targets),
 					extract<unsigned>(delays),
 					extract<float>(weights));
-		return getSynapseId ? get_id(id) : Py_None;
+		if(getSynapseId) {
+			return get_id(id);
+		} else {
+			Py_RETURN_NONE;
+		}
 	} else {
 		/* At least some inputs are vectors, so we need to return a list */
-		PyObject* ret = getSynapseId ? PyList_New(len) : Py_None;
+		PyObject* ret = getSynapseId ? PyList_New(len) : NULL;
 		for(unsigned i=0; i != len; ++i) {
 			unsigned type = extract<unsigned>(vectorTypes ? PySequence_GetItem(types, i) : types);
 			unsigned source = extract<unsigned>(vectorSources ? PySequence_GetItem(sources, i) : sources);
@@ -285,7 +289,11 @@ add_synapse(nemo::Network& net,
 				PyList_SetItem(ret, i, get_id(id));
 			}
 		}
-		return ret;
+		if(getSynapseId) {
+			return ret;
+		} else {
+			Py_RETURN_NONE;
+		}
 	}
 }
 
