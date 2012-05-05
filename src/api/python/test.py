@@ -126,6 +126,11 @@ class TestFunctions(unittest.TestCase):
         self.assertRaises(RuntimeError, net.set_neuron_parameter, 0, 5, 0.0) # parameter
         self.assertRaises(RuntimeError, net.set_neuron_state, 0, 2, 0.0)     # state
 
+    def test_add_neuron_np(self):
+        net = nemo.Network()
+        ni = net.add_neuron_type('Input')
+        net.add_neuron(ni, np.arange(5))
+
     def check_neuron_function(self, fun, ncount):
         vlen = random.randint(2, ncount)
         a = arg(vlen, random.random)
