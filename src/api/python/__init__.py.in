@@ -160,7 +160,7 @@ try:
         number of times
         """
         vargs = [to_vector_arg(x) for x in args]
-        return self.add_neuron_vec(type, idx, *vargs)
+        return self.add_neuron_vec(type, to_vector_arg(idx), *vargs)
 
     Network.add_neuron = add_neuron
 
